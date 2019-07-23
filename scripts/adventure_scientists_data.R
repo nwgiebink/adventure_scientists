@@ -26,6 +26,18 @@ names <- select(adventure_scientists_data_raw_expanded,
 names_corr <- corrplot(names, method = "number")
   #doesn't work yet 
 
+#Checking to make sure each common name doesn't have multiple species names
+adventure_scientists_data_raw_expanded %>%
+  group_by(common_name) %>%
+  summarize(unique_spec = n_distinct(scientific_name)) %>%
+  print(n = 149)
+
+#Checking out species that don't have a common name
+the_naughty_list = adventure_scientists_data_raw_expanded %>%
+  filter(common_name == "") %>%
+  group_by(scientific_name) %>%
+  summarize(n = n())
+
 #identify good candidate species in each region
 #heatmap: state~species 
 
@@ -62,3 +74,16 @@ familyHeatmap <- ggplot(adventure_scientists_data_raw_expanded,
 #add some metric of relative abundance within states
 #and map to aes() with fill = 
 
+#tidyverse candidate species
+top_5 = adventure_scientists_data_raw_expanded %>%
+  filter(place_state_name != "") %>%
+  filter(place_state_name %in% c("Washington", "Utah", 
+                                 "Montana", "California", 
+                                 "Arizona")) %>%
+  group_by(place_state_name, scientific_name) %>%
+  summarize(num_records = n()) %>%
+  ungroup() %>%
+  group_by(place_state_name) %>%
+  top_n(n = 5, wt = num_records) %>%
+  arrange((place_state_name), desc(num_records)) %>%
+  print(n = 46)
