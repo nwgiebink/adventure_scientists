@@ -16,16 +16,6 @@ library(corrplot)
 
 #DATA EXPLORATION
 
-#check for synonymous names
-#correlation plot: common name~species name
-names <- select(adventure_scientists_data_raw_expanded, 
-                common_name,
-                scientific_name
-                )
-
-names_corr <- corrplot(names, method = "number")
-  #doesn't work yet 
-
 #Checking to make sure each common name doesn't have multiple species names
 adventure_scientists_data_raw_expanded %>%
   group_by(common_name) %>%
@@ -38,43 +28,8 @@ the_naughty_list = adventure_scientists_data_raw_expanded %>%
   group_by(scientific_name) %>%
   summarize(n = n())
 
-#identify good candidate species in each region
-#heatmap: state~species 
 
-speciesHeatmap <- ggplot(adventure_scientists_data_raw_expanded,
-                         aes(x = scientific_name,
-                             y = place_state_name)) +
-  geom_tile() +
-  coord_flip() +
-  theme(axis.text.x = element_text(angle = 90,
-                                   hjust = 1))
-
-#heatmap:state~genus
-
-genusHeatmap <- ggplot(adventure_scientists_data_raw_expanded,
-                         aes(x = taxon_genus_name,
-                             y = place_state_name)) +
-  geom_tile() +
-  coord_flip() +
-  theme(axis.text.x = element_text(angle = 90,
-                                   hjust = 1))
-
-#heatmap: state~family
-familyHeatmap <- ggplot(adventure_scientists_data_raw_expanded,
-                       aes(x = taxon_family_name,
-                           y = place_state_name)) +
-  geom_tile() +
-  coord_flip() +
-  theme(axis.text.x = element_text(angle = 90,
-                                   hjust = 1))
-  #by far the easiest to read, but less informative
-
-
-#heatmaps currently only show presence/absence...
-#add some metric of relative abundance within states
-#and map to aes() with fill = 
-
-#tidyverse candidate species
+#Candidate species: top 5 by number of records in each state
 top_5 = adventure_scientists_data_raw_expanded %>%
   filter(place_state_name != "") %>%
   filter(place_state_name %in% c("Washington", "Utah", 
@@ -87,3 +42,19 @@ top_5 = adventure_scientists_data_raw_expanded %>%
   top_n(n = 5, wt = num_records) %>%
   arrange((place_state_name), desc(num_records)) %>%
   print(n = 46)
+
+
+#Visualize candidate species in each region
+#heatmap: state~species 
+
+speciesHeatmap <- ggplot(top_5,
+                         aes(x = scientific_name,
+                             y = place_state_name)) +
+  geom_tile(aes(fill = num_records)) +
+  coord_flip() +
+  geom_text(aes(label = num_records)) +
+  scale_fill_gradient(low = "white",
+                      high = "red") +
+theme(axis.text.x = element_text(angle = 45,
+                                 hjust = 1))
+
