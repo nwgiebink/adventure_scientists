@@ -18,7 +18,11 @@ iNat_utah <-
   read.csv("data/iNat_utah.csv")
 iNat_arizona <-
   read.csv("data/iNat_arizona.csv")
-
+iNat_as <-
+  read.csv("data/iNat_as.csv") 
+#iNat_as is updated Adventure Scientists data as of 2019-8-6
+#retrieved after iNat_[state] data (also 2019-8-6)
+#to exclude AS data from iNat
 
 
 #packages
