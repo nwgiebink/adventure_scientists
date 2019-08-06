@@ -8,8 +8,17 @@ adventure_scientists_data_raw <-
   read.csv("data/iNaturalist_AdventureScientists.csv")
 adventure_scientists_data_raw_expanded <-
   read.csv("data/iNaturalist_AdventureScientists_taxonInfoExpanded.csv")
-iNat_full <- 
-  read.csv("data/iNat_full.csv")
+iNat_montana <- 
+  read.csv("data/iNat_montana.csv")
+iNat_california <-
+  read.csv("data/iNat_california.csv")
+iNat_washington <-
+  read.csv("data/iNat_washington.csv")
+iNat_utah <-
+  read.csv("data/iNat_utah.csv")
+iNat_arizona <-
+  read.csv("data/iNat_arizona.csv")
+
 
 
 #packages
