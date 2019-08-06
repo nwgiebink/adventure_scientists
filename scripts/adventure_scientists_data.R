@@ -8,11 +8,14 @@ adventure_scientists_data_raw <-
   read.csv("data/iNaturalist_AdventureScientists.csv")
 adventure_scientists_data_raw_expanded <-
   read.csv("data/iNaturalist_AdventureScientists_taxonInfoExpanded.csv")
+iNat_full <- 
+  read.csv("data/iNat_full.csv")
+
 
 #packages
 library(tidyverse)
 library(ggplot2)
-library(corrplot)
+
 
 #DATA EXPLORATION
 
@@ -57,4 +60,6 @@ speciesHeatmap <- ggplot(top_5,
                       high = "red") +
 theme(axis.text.x = element_text(angle = 45,
                                  hjust = 1))
+
+
 
