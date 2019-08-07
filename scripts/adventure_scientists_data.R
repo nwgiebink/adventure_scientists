@@ -44,14 +44,22 @@ adventure_scientists_data_raw_expanded %>%
   summarize(unique_spec = n_distinct(scientific_name)) %>%
   print(n = 149)
 
+iNat_only_duplicates <- iNat_only %>%
+  group_by(common_name) %>%
+  summarize(unique_spec = n_distinct(scientific_name)) %>%
+  filter(unique_spec != 1)
+  #123 species with no common name
+  #3 common names with duplicate (2) species names:
+  #Arrowhead Blue, Large Marble, Pacific Dotted-Blue
+
 #Checking out species that don't have a common name
 the_naughty_list = adventure_scientists_data_raw_expanded %>%
   filter(common_name == "") %>%
   group_by(scientific_name) %>%
   summarize(n = n())
 
-
-#Candidate species: top 5 by number of records in each state
+#Candidate species: top 5 by number of records in each state:
+#Adventure Scientists
 top_5 = adventure_scientists_data_raw_expanded %>%
   filter(place_state_name != "") %>%
   filter(place_state_name %in% c("Washington", "Utah", 
@@ -64,8 +72,26 @@ top_5 = adventure_scientists_data_raw_expanded %>%
   top_n(n = 5, wt = num_records) %>%
   arrange((place_state_name), desc(num_records)) %>%
   print(n = 46)
+#iNaturalist only--not including AS data
+top_5_iNat <- iNat_only %>%
+  group_by(place_state_name, scientific_name) %>%
+  summarize(num_records = n()) %>%
+  ungroup() %>%
+  group_by(place_state_name) %>%
+  top_n(n = 5, wt = num_records) %>%
+  arrange((place_state_name), desc(num_records)) %>%
+  print(n = 46)
 
-
+#What do iNat and AS have in common?
+top_shared <- top_5 %>%
+  ungroup() %>%
+  mutate(place_state_name = as.character(place_state_name), 
+         scientific_name = as.character(scientific_name)) %>%
+  inner_join(top_5_iNat %>%
+               ungroup() %>%
+               mutate(place_state_name = as.character(place_state_name),
+                      scientific_name = as.character(scientific_name)), by = "scientific_name")
+             
 #Visualize candidate species in each region
 #heatmap: state~species 
 
@@ -80,5 +106,15 @@ speciesHeatmap <- ggplot(top_5,
 theme(axis.text.x = element_text(angle = 45,
                                  hjust = 1))
 
+speciesHeatmap_iNat_only <- ggplot(top_5_iNat,
+                         aes(x = scientific_name,
+                             y = place_state_name)) +
+  geom_tile(aes(fill = num_records)) +
+  coord_flip() +
+  geom_text(aes(label = num_records)) +
+  scale_fill_gradient(low = "white",
+                      high = "red") +
+  theme(axis.text.x = element_text(angle = 45,
+                                   hjust = 1))
 
 
