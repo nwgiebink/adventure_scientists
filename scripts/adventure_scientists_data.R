@@ -34,7 +34,7 @@ iNat_full <-
   
 #remove Adventure Scientists observations from iNat
 as_observations <- select(iNat_as, id)
-iNat_only <- filter(iNat_full, !iNat_full$id %in% as_observations)
+iNat_only <- filter(iNat_full, !(iNat_full$id %in% as_observations$id))
 
 #DATA EXPLORATION
 
