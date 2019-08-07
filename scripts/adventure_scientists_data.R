@@ -3,6 +3,10 @@
 #giebink@email.arizona.edu
 #2019-07-19
 
+#packages
+library(tidyverse)
+library(ggplot2)
+
 #data
 adventure_scientists_data_raw <-
   read.csv("data/iNaturalist_AdventureScientists.csv")
@@ -24,11 +28,13 @@ iNat_as <-
 #retrieved after iNat_[state] data (also 2019-8-6)
 #to exclude AS data from iNat
 
-
-#packages
-library(tidyverse)
-library(ggplot2)
-
+#iNat states compiled
+iNat_full <-
+  rbind(iNat_arizona, iNat_california, iNat_montana, iNat_utah, iNat_washington) 
+  
+#remove Adventure Scientists observations from iNat
+as_observations <- select(iNat_as, id)
+iNat_only <- filter(iNat_full, !iNat_full$id %in% as_observations)
 
 #DATA EXPLORATION
 
