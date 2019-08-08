@@ -53,6 +53,15 @@ iNat_only_duplicates <- iNat_only %>%
   #3 common names with duplicate (2) species names:
   #Arrowhead Blue, Large Marble, Pacific Dotted-Blue
 
+no_name <- iNat_only %>%
+  filter(common_name == "")
+
+inner_join(no_name %>% mutate(scientific_name = as.character(scientific_name)), top_5_iNat %>%
+             ungroup() %>%
+             mutate(place_state_name = as.character(place_state_name),
+                    scientific_name = as.character(scientific_name)), by = "scientific_name")
+  #Result: none of the top 5 lack a common name (i.e. no duplicate scientific names)
+
 #Checking out species that don't have a common name
 the_naughty_list = adventure_scientists_data_raw_expanded %>%
   filter(common_name == "") %>%
