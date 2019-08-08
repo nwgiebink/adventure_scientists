@@ -6,6 +6,7 @@
 #packages
 library(tidyverse)
 library(ggplot2)
+library(ggpubr)
 
 #data
 adventure_scientists_data_raw <-
@@ -90,8 +91,10 @@ top_shared <- top_5 %>%
   inner_join(top_5_iNat %>%
                ungroup() %>%
                mutate(place_state_name = as.character(place_state_name),
-                      scientific_name = as.character(scientific_name)), by = "scientific_name")
-             
+                      scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
+  select(scientific_name, all_data_state = place_state_name.y, num_records_all_data = num_records.y, 
+         as_data_state = place_state_name.x, num_records_as_data = num_records.x)
+
 #Visualize candidate species in each region
 #heatmap: state~species 
 
@@ -102,9 +105,14 @@ speciesHeatmap <- ggplot(top_5,
   coord_flip() +
   geom_text(aes(label = num_records)) +
   scale_fill_gradient(low = "white",
-                      high = "red") +
-theme(axis.text.x = element_text(angle = 45,
-                                 hjust = 1))
+                      high = "red", name = "Number of records") +
+  xlab("Scientific name") +
+  ylab("State") +
+  theme_bw() +
+  theme(axis.text.y = element_text(face = "italic"),
+        axis.text.x = element_text(angle = 45, 
+                                   hjust = 1)) +
+  ggtitle("Adventure Scientists")
 
 speciesHeatmap_iNat_only <- ggplot(top_5_iNat,
                          aes(x = scientific_name,
@@ -114,7 +122,12 @@ speciesHeatmap_iNat_only <- ggplot(top_5_iNat,
   geom_text(aes(label = num_records)) +
   scale_fill_gradient(low = "white",
                       high = "red") +
-  theme(axis.text.x = element_text(angle = 45,
-                                   hjust = 1))
+  xlab("Scientific name") +
+  ylab("State") +
+  theme_bw() +
+  theme(axis.text.y = element_text(face = "italic"),
+        axis.text.x = element_text(angle = 45, 
+                                   hjust = 1)) +
+  ggtitle("iNat only")
 
-
+both = ggarrange(speciesHeatmap, speciesHeatmap_iNat_only, common.legend = TRUE)
