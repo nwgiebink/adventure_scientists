@@ -101,7 +101,7 @@ top_shared <- top_5 %>%
                ungroup() %>%
                mutate(place_state_name = as.character(place_state_name),
                       scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
-  select(scientific_name, all_data_state = place_state_name.y, num_records_all_data = num_records.y, 
+  select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
          as_data_state = place_state_name.x, num_records_as_data = num_records.x)
 
 #Visualize candidate species in each region
