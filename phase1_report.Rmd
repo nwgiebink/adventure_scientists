@@ -2,7 +2,9 @@
 title: "phase1_report"
 author: "Noah Giebink"
 date: "8/12/2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 #Objectives
 1. Acquire, clean, and explore iNat and Adventure Scientists (AS) data
