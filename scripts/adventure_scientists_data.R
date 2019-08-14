@@ -7,6 +7,8 @@
 library(tidyverse)
 library(ggplot2)
 library(ggpubr)
+library(ggmap)
+library(mapr)
 
 #data
 adventure_scientists_data_raw <-
@@ -140,3 +142,18 @@ speciesHeatmap_iNat_only <- ggplot(top_5_iNat,
   ggtitle("iNat only")
 
 both = ggarrange(speciesHeatmap, speciesHeatmap_iNat_only, common.legend = TRUE)
+
+#Map candidate species
+key <- read.table("/home/noah/Documents/r-stats/ggmap_API_key")
+register_google(key = key[1,1])
+
+L_carinenta_AS <- filter(iNat_as, scientific_name == "Libytheana carinenta") %>% 
+  mutate(source = "adventure_scientists") 
+  L_carinenta_iNat <- filter(iNat_only, scientific_name == "Libytheana carinenta") %>%
+  mutate(source = "iNat_only")
+L_carinenta <- rbind(L_carinenta_iNat, L_carinenta_AS) %>% rename(name = scientific_name)
+
+L_carinenta %>%
+  map_ggmap() 
+  
+
