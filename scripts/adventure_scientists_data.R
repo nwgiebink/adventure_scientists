@@ -152,8 +152,14 @@ L_carinenta_AS <- filter(iNat_as, scientific_name == "Libytheana carinenta") %>%
   L_carinenta_iNat <- filter(iNat_only, scientific_name == "Libytheana carinenta") %>%
   mutate(source = "iNat_only")
 L_carinenta <- rbind(L_carinenta_iNat, L_carinenta_AS) %>% rename(name = scientific_name)
+  #map_ggmap   requires a variable called "name" in addition to lat and lon
 
 L_carinenta %>%
-  map_ggmap() 
+  map_ggmap() +
+  geom_point(aes(fill = source))
   
+#look at example in monarch_ml to integrate ggmap with ggplot
+#species by color facet by source? Or some combination of color and faceting
+
+
 
