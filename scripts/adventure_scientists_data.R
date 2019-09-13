@@ -27,6 +27,12 @@ iNat_arizona <-
   read.csv("data/iNat_arizona.csv")
 iNat_as <-
   read.csv("data/iNat_as.csv") 
+xerces_red_list <- 
+  read.csv("data/endangered_leps.csv")
+usfws_endangered_threatened <- 
+  read.csv("data/endangered_leps_usfws.csv")
+
+
 #iNat_as is updated Adventure Scientists data as of 2019-8-6
 #retrieved after iNat_[state] data (also 2019-8-6)
 #to exclude AS data from iNat
@@ -190,5 +196,27 @@ L_carinenta %>%
 #look at example in monarch_ml to integrate ggmap with ggplot
 #species by color facet by source? Or some combination of color and faceting
 
+# look for endangered species in AS data
+AS_records <- adventure_scientists_data_raw_expanded %>%
+  filter(place_state_name != "") %>%
+  filter(place_state_name %in% c("Washington", "Utah", 
+                                 "Montana", "California", 
+                                 "Arizona")) %>%
+  group_by(place_state_name, scientific_name) %>%
+  summarize(num_records = n()) %>%
+  ungroup() %>%
+  arrange(scientific_name, desc(num_records))
 
+
+AS_red_list <- inner_join(AS_records, xerces_red_list,
+                            by = "scientific_name")
+  #none are Xerces red-listed. BUT, does NOT account for subsp. name
+AS_endangered_threatened  <- inner_join(usfws_endangered_threatened, 
+                                        AS_records, 
+                                        by = "scientific_name")
+  #Figure out how to search "starts with" any value in a column of strings
+  #the answer is likely in:
+  #https://stackoverflow.com/questions/38724690/r-filter-rows-that-contain-a-string-from-a-vector/38726850
+  #or 
+  #https://github.com/rstudio/cheatsheets/blob/master/strings.pdf (stringr cheat sheet)
 
