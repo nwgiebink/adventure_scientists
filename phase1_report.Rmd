@@ -3,10 +3,10 @@ title: "phase1_report"
 author: "Noah Giebink"
 date: "8/12/2019"
 output:
-  pdf_document: default
-  html_document: default
+  html_document:
+    theme: cosmo
 ---
-#Objectives
+# Objectives
 1. Acquire, clean, and explore iNat and Adventure Scientists (AS) data
 2. Identify candidate species and localities for initial SDM comparisons
 
@@ -50,7 +50,7 @@ iNat_only <- filter(iNat_full, !(iNat_full$id %in% as_observations$id))
 ```
 
 
-###Top five species observed by state: AS
+### Top five species observed by state: AS
 ```{r, echo=FALSE}
 #AS data
 top_5 = adventure_scientists_data_raw_expanded %>%
@@ -83,8 +83,9 @@ kable(top_5_iNat)
   
 ```
 
-###Best candidate species
-####Top five coverage in both AS and iNat
+### Best candidate species
+
+#### Top coverage in both AS and iNat
 ```{r}
 top_shared <- top_5 %>%
   ungroup() %>%
@@ -95,17 +96,18 @@ top_shared <- top_5 %>%
                mutate(place_state_name = as.character(place_state_name),
                       scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
   select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
-         as_data_state = place_state_name.x, num_records_as_data = num_records.x)
+         as_data_state = place_state_name.x, num_records_as_data = num_records.x) %>%
+  filter(iNat_data_state == as_data_state)
 
 kable(top_shared)
 ```
 
 
-##2. Identify candidate species and localities for initial SDM comparisons
+## 2. Identify candidate species and localities for initial SDM comparisons
 Within the contiguous U.S., Adventure Scientists have been deployed in Arizona, California, Montana, Utah, and Washington. 
 
 
-###Top five species observed in each state for both sampling methods
+### Top five species observed in each state for both sampling methods
 ```{r, echo=FALSE}
 speciesHeatmap <- ggplot(top_5,
                          aes(x = scientific_name,
