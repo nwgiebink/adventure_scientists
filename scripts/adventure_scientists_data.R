@@ -94,6 +94,15 @@ top_5_iNat <- iNat_only %>%
   arrange((place_state_name), desc(num_records)) %>%
   print(n = 46)
 
+iNat_coverage <- iNat_only %>%
+  group_by(place_state_name, scientific_name) %>%
+  summarize(num_records = n()) %>%
+  ungroup() %>%
+  group_by(place_state_name) %>%
+  filter(num_records > 19) %>%
+  arrange((place_state_name), desc(num_records)) %>%
+  print(n = 46)
+
 #What do iNat and AS have in common?
 top_shared <- top_5 %>%
   ungroup() %>%
@@ -105,7 +114,27 @@ top_shared <- top_5 %>%
                       scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
   select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
          as_data_state = place_state_name.x, num_records_as_data = num_records.x) %>%
-  filter(iNat_data_state == as_data_state)
+  filter(iNat_data_state == as_data_state) %>%
+  select("Species" = scientific_name, 
+         "State" = iNat_data_state, 
+         "iNat_Records" = num_records_iNat_data,
+         "AS_Records" = num_records_as_data)
+
+shared_coverage <- top_5 %>%
+  ungroup() %>%
+  mutate(place_state_name = as.character(place_state_name), 
+         scientific_name = as.character(scientific_name)) %>%
+  inner_join(iNat_coverage %>%
+               ungroup() %>%
+               mutate(place_state_name = as.character(place_state_name),
+                      scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
+  select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
+         as_data_state = place_state_name.x, num_records_as_data = num_records.x) %>%
+  filter(iNat_data_state == as_data_state) %>%
+  select("Species" = scientific_name, 
+         "State" = iNat_data_state, 
+         "iNat_Records" = num_records_iNat_data,
+         "AS_Records" = num_records_as_data)
 
 #Visualize candidate species in each region
 #heatmap: state~species 

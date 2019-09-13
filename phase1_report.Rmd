@@ -97,9 +97,30 @@ top_shared <- top_5 %>%
                       scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
   select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
          as_data_state = place_state_name.x, num_records_as_data = num_records.x) %>%
-  filter(iNat_data_state == as_data_state)
+  filter(iNat_data_state == as_data_state) %>%
+  select("Species" = scientific_name, 
+         "State" = iNat_data_state, 
+         "iNat_Records" = num_records_iNat_data,
+         "AS_Records" = num_records_as_data)
+
+shared_coverage <- top_5 %>%
+  ungroup() %>%
+  mutate(place_state_name = as.character(place_state_name), 
+         scientific_name = as.character(scientific_name)) %>%
+  inner_join(iNat_coverage %>%
+               ungroup() %>%
+               mutate(place_state_name = as.character(place_state_name),
+                      scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
+  select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
+         as_data_state = place_state_name.x, num_records_as_data = num_records.x) %>%
+  filter(iNat_data_state == as_data_state) %>%
+  select("Species" = scientific_name, 
+         "State" = iNat_data_state, 
+         "iNat_Records" = num_records_iNat_data,
+         "AS_Records" = num_records_as_data)
 
 kable(top_shared)
+kable(shared_coverage)
 ```
 
 
