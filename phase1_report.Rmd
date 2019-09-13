@@ -50,9 +50,9 @@ iNat_only <- filter(iNat_full, !(iNat_full$id %in% as_observations$id))
 ```
 
 
-### Top five species observed by state: AS
-```{r, echo=FALSE}
-#AS data
+
+### Best candidate species based on coverage in both datasets
+```{r}
 top_5 = adventure_scientists_data_raw_expanded %>%
   filter(place_state_name != "") %>%
   filter(place_state_name %in% c("Washington", "Utah", 
@@ -63,14 +63,9 @@ top_5 = adventure_scientists_data_raw_expanded %>%
   ungroup() %>%
   group_by(place_state_name) %>%
   top_n(n = 5, wt = num_records) %>%
-  arrange((place_state_name), desc(num_records)) 
+  arrange((place_state_name), desc(num_records))
 
-kable(top_5)
-
-```
-
-###Top five species observed by state: iNat
-```{r}
+#iNaturalist only--not including AS data
 top_5_iNat <- iNat_only %>%
   group_by(place_state_name, scientific_name) %>%
   summarize(num_records = n()) %>%
@@ -79,14 +74,16 @@ top_5_iNat <- iNat_only %>%
   top_n(n = 5, wt = num_records) %>%
   arrange((place_state_name), desc(num_records))
 
-kable(top_5_iNat)
-  
-```
+#All species with at least 20 observations in iNat alone, by state
+iNat_coverage <- iNat_only %>%
+  group_by(place_state_name, scientific_name) %>%
+  summarize(num_records = n()) %>%
+  ungroup() %>%
+  group_by(place_state_name) %>%
+  filter(num_records > 19) %>%
+  arrange((place_state_name), desc(num_records))
 
-### Best candidate species
-
-#### Top coverage in both AS and iNat
-```{r}
+#What do iNat and AS have in common?
 top_shared <- top_5 %>%
   ungroup() %>%
   mutate(place_state_name = as.character(place_state_name), 
@@ -118,6 +115,7 @@ shared_coverage <- top_5 %>%
          "State" = iNat_data_state, 
          "iNat_Records" = num_records_iNat_data,
          "AS_Records" = num_records_as_data)
+
 
 kable(top_shared)
 kable(shared_coverage)

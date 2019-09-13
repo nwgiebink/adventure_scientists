@@ -82,8 +82,8 @@ top_5 = adventure_scientists_data_raw_expanded %>%
   ungroup() %>%
   group_by(place_state_name) %>%
   top_n(n = 5, wt = num_records) %>%
-  arrange((place_state_name), desc(num_records)) %>%
-  print(n = 46)
+  arrange((place_state_name), desc(num_records))
+
 #iNaturalist only--not including AS data
 top_5_iNat <- iNat_only %>%
   group_by(place_state_name, scientific_name) %>%
@@ -91,17 +91,16 @@ top_5_iNat <- iNat_only %>%
   ungroup() %>%
   group_by(place_state_name) %>%
   top_n(n = 5, wt = num_records) %>%
-  arrange((place_state_name), desc(num_records)) %>%
-  print(n = 46)
+  arrange((place_state_name), desc(num_records))
 
+#All species with at least 20 observations in iNat alone, by state
 iNat_coverage <- iNat_only %>%
   group_by(place_state_name, scientific_name) %>%
   summarize(num_records = n()) %>%
   ungroup() %>%
   group_by(place_state_name) %>%
   filter(num_records > 19) %>%
-  arrange((place_state_name), desc(num_records)) %>%
-  print(n = 46)
+  arrange((place_state_name), desc(num_records))
 
 #What do iNat and AS have in common?
 top_shared <- top_5 %>%
