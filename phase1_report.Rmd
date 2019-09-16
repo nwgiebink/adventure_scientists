@@ -1,12 +1,17 @@
 ---
-title: "phase1_report"
+title: "Adventure Scientists: Phase One"
 author: "Noah Giebink"
 date: "8/12/2019"
 output:
   html_document:
     theme: cosmo
 ---
-# Objectives
+### Introduction
+
+A strong urban bias may reduce the ability of valuable citizen science sources, such as iNaturalist and eButterfly, to accurately model species distributions, estimate species richness, and inform decisions. We will describe the effect of coupling urban iNaturalist (iNat) data with Adventure Scientists (AS) observations, which target remote locations, on butterfly distribution modeling. 
+
+
+### Completed objectives
 1. Acquire, clean, and explore iNat and Adventure Scientists (AS) data
 2. Identify candidate species and localities for initial SDM comparisons
 
@@ -49,10 +54,7 @@ as_observations <- select(iNat_as, id)
 iNat_only <- filter(iNat_full, !(iNat_full$id %in% as_observations$id))
 ```
 
-
-
-### Best candidate species based on coverage in both datasets
-```{r}
+```{r, include=FALSE}
 top_5 = adventure_scientists_data_raw_expanded %>%
   filter(place_state_name != "") %>%
   filter(place_state_name %in% c("Washington", "Utah", 
@@ -82,51 +84,9 @@ iNat_coverage <- iNat_only %>%
   group_by(place_state_name) %>%
   filter(num_records > 19) %>%
   arrange((place_state_name), desc(num_records))
-
-#What do iNat and AS have in common?
-top_shared <- top_5 %>%
-  ungroup() %>%
-  mutate(place_state_name = as.character(place_state_name), 
-         scientific_name = as.character(scientific_name)) %>%
-  inner_join(top_5_iNat %>%
-               ungroup() %>%
-               mutate(place_state_name = as.character(place_state_name),
-                      scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
-  select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
-         as_data_state = place_state_name.x, num_records_as_data = num_records.x) %>%
-  filter(iNat_data_state == as_data_state) %>%
-  select("Species" = scientific_name, 
-         "State" = iNat_data_state, 
-         "iNat_Records" = num_records_iNat_data,
-         "AS_Records" = num_records_as_data)
-
-shared_coverage <- top_5 %>%
-  ungroup() %>%
-  mutate(place_state_name = as.character(place_state_name), 
-         scientific_name = as.character(scientific_name)) %>%
-  inner_join(iNat_coverage %>%
-               ungroup() %>%
-               mutate(place_state_name = as.character(place_state_name),
-                      scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
-  select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
-         as_data_state = place_state_name.x, num_records_as_data = num_records.x) %>%
-  filter(iNat_data_state == as_data_state) %>%
-  select("Species" = scientific_name, 
-         "State" = iNat_data_state, 
-         "iNat_Records" = num_records_iNat_data,
-         "AS_Records" = num_records_as_data)
-
-
-kable(top_shared)
-kable(shared_coverage)
 ```
 
-
-## 2. Identify candidate species and localities for initial SDM comparisons
-Within the contiguous U.S., Adventure Scientists have been deployed in Arizona, California, Montana, Utah, and Washington. 
-
-
-### Top five species observed in each state for both sampling methods
+### Data Exploration
 ```{r, echo=FALSE}
 speciesHeatmap <- ggplot(top_5,
                          aes(x = scientific_name,
@@ -164,4 +124,71 @@ both = ggarrange(speciesHeatmap, speciesHeatmap_iNat_only, common.legend = TRUE)
 both
 ```
 
-Sampling that targets remote areas yields remarkably different species observations than non-targeted, largely urban sampling. AS sampling yields more species diversity, evenness, or both. For AS, only one species was in the top five for more than one state; the rest are uniquely common to one state. iNaturalist sampling alone yields more repeated common species across states.
+Figure 1. Top five species observed in each state for both sampling methods. Combining both citizen science approaches reveals a distinct and more diverse species pool, including rarely sampled and non-urban adapted species, even with non-expert observers. AS sampling yields more species diversity, evenness, or both. For AS, only one species was in the top five for more than one state; the rest are uniquely common to one state. On its own, iNat sampling yields repeated common species across states.
+
+
+
+### Candidate Species
+We prioritize species which are amply described by both AS and iNat to promote SDM integrity and avoid the confounding variable of exceptionally poor sampling within our SDM comparisons. Each candidate species is in the top five records by AS in its respective state and has at least 20 records in iNaturalist. 
+
+
+Table 1. Candidate species and localities for initial SDM comparisons.
+```{r}
+
+#What do iNat and AS have in common?
+top_shared <- top_5 %>%
+  ungroup() %>%
+  mutate(place_state_name = as.character(place_state_name), 
+         scientific_name = as.character(scientific_name)) %>%
+  inner_join(top_5_iNat %>%
+               ungroup() %>%
+               mutate(place_state_name = as.character(place_state_name),
+                      scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
+  select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
+         as_data_state = place_state_name.x, num_records_as_data = num_records.x) %>%
+  filter(iNat_data_state == as_data_state) %>%
+  select("Species" = scientific_name, 
+         "State" = iNat_data_state, 
+         "iNat_Records" = num_records_iNat_data,
+         "AS_Records" = num_records_as_data)
+
+shared_coverage <- top_5 %>%
+  ungroup() %>%
+  mutate(place_state_name = as.character(place_state_name), 
+         scientific_name = as.character(scientific_name)) %>%
+  inner_join(iNat_coverage %>%
+               ungroup() %>%
+               mutate(place_state_name = as.character(place_state_name),
+                      scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
+  select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
+         as_data_state = place_state_name.x, num_records_as_data = num_records.x) %>%
+  filter(iNat_data_state == as_data_state) %>%
+  select("Species" = scientific_name, 
+         "State" = iNat_data_state, 
+         "iNat_Records" = num_records_iNat_data,
+         "AS_Records" = num_records_as_data)
+
+kable(shared_coverage)
+```
+
+
+### Discussion
+
+We will begin with the four candidates from Arizona.
+The Southwestern United States has the bulk of ideal candidate species and generating SDMs for this region will appeal to our local audience, as well as Society for Ecological Restoration - Southest Chapter attendees. 
+
+The candidates from Arizona are also ideal to the conceptual aims of our project. Of the four species, _Libytheana carinenta_, _Celastrina echo_, and _Eurema mexicana_ are well-sampled by iNat (>100 records) and readily discoverable in urban habitats. For these species, we will examine the extent of change in range estimates with the addition of targeted sampling (AS) and potential innacuracy of previous estimates, even for species which appear well-described by iNat. 
+
+In contrast, _Gyrocheilus patrobus_ largely exists in non-urban habitats and has an order of magnitude less records on iNaturalist. By examining species like _G. patrobus_, we will begin to understand whether AS records can compensate for poor overall sampling in iNat to assess rare and non-urban adapted species, and whether an urban bias effect depends on species' habitat type. 
+
+
+#### Phase 2:
+1. Acquire updated subset of iNat and AS data for Southwestern U.S. (i.e. not restricted to individual states)
+    + Northern boundary: N border of CA, Eastern boundary: E border of NM, Southern boundary: S border of Baja California, Western boundary: W coast of CA
+2. Build SDMs for _L carinenta_, _C. echo_, _E. mexicana_, and _G. patrobus_
+3. Make poster for SER-SW meeting
+
+#### Phase 3:
+1. Expand phase 2 to include species in each of the five AS states
+
+#### Phase 4: Manuscript writing
