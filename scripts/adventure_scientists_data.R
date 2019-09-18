@@ -31,7 +31,8 @@ xerces_red_list <-
   read.csv("data/endangered_leps.csv")
 usfws_endangered_threatened <- 
   read.csv("data/endangered_leps_usfws.csv")
-
+west_as <- read.csv("data/west_as.csv")
+west_iNat <- read.csv("data/west_iNat.csv")
 
 #iNat_as is updated Adventure Scientists data as of 2019-8-6
 #retrieved after iNat_[state] data (also 2019-8-6)
@@ -176,7 +177,7 @@ speciesHeatmap_iNat_only <- ggplot(top_5_iNat,
                                    hjust = 1)) +
   ggtitle("iNat only")
 
-both = ggarrange(speciesHeatmap, speciesHeatmap_iNat_only, common.legend = TRUE)
+both <- ggarrange(speciesHeatmap, speciesHeatmap_iNat_only, common.legend = TRUE)
 
 #Map candidate species
 key <- read.table("/home/noah/Documents/r-stats/ggmap_API_key")
@@ -219,4 +220,109 @@ AS_endangered_threatened  <- inner_join(usfws_endangered_threatened,
   #https://stackoverflow.com/questions/38724690/r-filter-rows-that-contain-a-string-from-a-vector/38726850
   #or 
   #https://github.com/rstudio/cheatsheets/blob/master/strings.pdf (stringr cheat sheet)
+
+
+
+#REPEAT LISTS & HEATMAPS FOR "WEST" DATASETS
+
+#Candidate species: top 5 by number of records in each state:
+#Adventure Scientists
+top_5_west = west_as %>%
+  filter(place_state_name != "") %>%
+  filter(place_state_name %in% c("Washington", "Utah", 
+                                 "Montana", "California", 
+                                 "Arizona")) %>%
+  group_by(place_state_name, scientific_name) %>%
+  summarize(num_records = n()) %>%
+  ungroup() %>%
+  group_by(place_state_name) %>%
+  top_n(n = 5, wt = num_records) %>%
+  arrange((place_state_name), desc(num_records))
+
+#iNaturalist only--not including AS data
+top_5_iNat_west <-  west_iNat_only %>%
+  filter(place_state_name != "") %>%
+  filter(place_state_name %in% c("Washington", "Utah", 
+                                 "Montana", "California", 
+                                 "Arizona")) %>%
+  group_by(place_state_name, scientific_name) %>%
+  summarize(num_records = n()) %>%
+  ungroup() %>%
+  group_by(place_state_name) %>%
+  top_n(n = 5, wt = num_records) %>%
+  arrange((place_state_name), desc(num_records))  
+
+
+#All species with at least 20 observations in iNat alone, by state
+iNat_coverage_west <- west_iNat_only %>%
+  filter(place_state_name != "") %>%
+  group_by(place_state_name, scientific_name) %>%
+  summarize(num_records = n()) %>%
+  ungroup() %>%
+  group_by(place_state_name) %>%
+  filter(num_records > 19) %>%
+  arrange((place_state_name), desc(num_records))
+
+#What do iNat and AS have in common?
+shared_coverage_west <- top_5_west %>%
+  ungroup() %>%
+  mutate(place_state_name = as.character(place_state_name), 
+         scientific_name = as.character(scientific_name)) %>%
+  inner_join(iNat_coverage_west %>%
+               ungroup() %>%
+               mutate(place_state_name = as.character(place_state_name),
+                      scientific_name = as.character(scientific_name)), by = "scientific_name") %>%
+  select(scientific_name, iNat_data_state = place_state_name.y, num_records_iNat_data = num_records.y, 
+         as_data_state = place_state_name.x, num_records_as_data = num_records.x) %>%
+  filter(iNat_data_state == as_data_state) %>%
+  select("Species" = scientific_name, 
+         "State" = iNat_data_state, 
+         "iNat_Records" = num_records_iNat_data,
+         "AS_Records" = num_records_as_data)
+
+#Visualize candidate species in each region
+#heatmap: state~species 
+
+speciesHeatmap_west <- ggplot(top_5_west,
+                         aes(x = scientific_name,
+                             y = place_state_name)) +
+  geom_tile(aes(fill = num_records)) +
+  coord_flip() +
+  geom_text(aes(label = num_records)) +
+  scale_fill_gradient(low = "white",
+                      high = "red", name = "Number of records") +
+  xlab("Scientific name") +
+  ylab("State") +
+  theme_bw() +
+  theme(axis.text.y = element_text(face = "italic"),
+        axis.text.x = element_text(angle = 45, 
+                                   hjust = 1)) +
+  ggtitle("Adventure Scientists")
+
+speciesHeatmap_west_iNat_only <- ggplot(top_5_iNat,
+                                   aes(x = scientific_name,
+                                       y = place_state_name)) +
+  geom_tile(aes(fill = num_records)) +
+  coord_flip() +
+  geom_text(aes(label = num_records)) +
+  scale_fill_gradient(low = "white",
+                      high = "red") +
+  xlab("Scientific name") +
+  ylab("State") +
+  theme_bw() +
+  theme(axis.text.y = element_text(face = "italic"),
+        axis.text.x = element_text(angle = 45, 
+                                   hjust = 1)) +
+  ggtitle("iNat only")
+
+both_west <- ggarrange(speciesHeatmap_west, speciesHeatmap_west_iNat_only, common.legend = TRUE)
+
+
+
+
+
+
+
+
+
 
