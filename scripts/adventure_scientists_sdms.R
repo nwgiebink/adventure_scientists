@@ -17,3 +17,10 @@ west_iNat <- read.csv("data/west_iNat.csv")
 west_as_observations <- select(west_as, id)
 west_iNat_only <- filter(west_iNat, !(west_iNat$id %in% as_observations$id))
 
+
+
+
+
+
+
+
