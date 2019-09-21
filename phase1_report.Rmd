@@ -1,8 +1,9 @@
 ---
-title: "Adventure Scientists: Phase One"
+title: 'Adventure Scientists: Phase One'
 author: "Noah Giebink"
-date: "9/16/2019"
+date: "9  /16/2019"
 output:
+  pdf_document: 
   html_document:
     theme: cosmo
 ---
