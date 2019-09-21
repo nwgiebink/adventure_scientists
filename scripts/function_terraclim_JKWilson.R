@@ -6,7 +6,7 @@
 #Packages
 library(tidyverse)
 library(RNetCDF)
-library(dismo)
+library(dismo) 
 library(raster)
 library(progress)
 
@@ -321,3 +321,10 @@ get_bioclim = function(lat_range, lon_range, year_split) {
 as_terraclim <- get_bioclim(lat_range = c(28, 49), 
                             lon_range = c(-125, -100), 
                             year_split = 2000)
+
+#Save as_terraclim to disk (backup) with .rds extension
+#and test loading the file
+saveRDS(as_terraclim, file = "data/as_terraclim.rds")
+as_terraclim_read <- readRDS("data/as_terraclim.rds")
+head(as_terraclim_read) #test read object
+head(as_terraclim) #compare with original object
