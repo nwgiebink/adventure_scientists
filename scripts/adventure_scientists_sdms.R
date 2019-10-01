@@ -4,10 +4,10 @@
 #giebink@email.arizona.edu
 #2019-9-17
 
-#Packages
+#Packages ----------------------------------------------------------------
 library(tidyverse)
 
-#Data
+#Data --------------------------------------------------------------------
   #All research-grade AS and iNat butterfly (Papilionoidea) 
   #records within swlat 28.0 swlng -125.0 nelat 49.0 nelng -100.0
 west_as <- read.csv("data/west_as.csv")
@@ -17,7 +17,350 @@ west_iNat <- read.csv("data/west_iNat.csv")
 west_as_observations <- select(west_as, id)
 west_iNat_only <- filter(west_iNat, !(west_iNat$id %in% as_observations$id))
 
+#' iNat data
+#'  iNat + AS = west_iNat
+#'  iNat only = west_iNat_only
+#'  AS only = west_as
+#'  just the candidates:
 
+west_iNat_cand <- filter(west_iNat, scientific_name == "Libytheana carinenta"|
+                           scientific_name == "Celastrina echo"|
+                           scientific_name == "Gyrocheilus patrobas"|
+                           scientific_name == "Eurema mexica"|
+                           scientific_name == "Vanessa cardui")
+west_iNat_only_cand <- filter(west_iNat_only, scientific_name == "Libytheana carinenta"|
+                                scientific_name == "Celastrina echo"|
+                                scientific_name == "Gyrocheilus patrobas"|
+                                scientific_name == "Eurema mexica"|
+                                scientific_name == "Vanessa cardui")
+west_as_cand <- filter(west_as, scientific_name == "Libytheana carinenta"|
+                         scientific_name == "Celastrina echo"|
+                         scientific_name == "Gyrocheilus patrobas"|
+                         scientific_name == "Eurema mexica"|
+                         scientific_name == "Vanessa cardui")
+
+
+#' visualize iNat data with quick map 
+
+
+  # Map candidate species west_iNat_cand
+map_cand <- get_map(c(left = -125, right = -100, bottom = 28, top = 49)) %>%
+  ggmap() +
+  geom_point(data = west_iNat_cand,
+             aes(x = longitude, y = latitude, color = scientific_name)) +
+  facet_wrap(~scientific_name)
+  # Map west_iNat_only_cand
+map_cand_iNat <- get_map(c(left = -125, right = -100, bottom = 28, top = 49)) %>%
+  ggmap() +
+  geom_point(data = west_iNat_only_cand,
+             aes(x = longitude, y = latitude, color = scientific_name)) +
+  facet_wrap(~scientific_name)
+
+  # Map west_as_cand
+map_cand_as <- get_map(c(left = -125, right = -100, bottom = 28, top = 49)) %>%
+  ggmap() +
+  geom_point(data = west_as_cand,
+             aes(x = longitude, y = latitude, color = scientific_name)) +
+  facet_wrap(~scientific_name)
+
+
+# Function for building butterfly SDMs -----------------------------------
+# Based on https://github.com/keatonwilson/butterfly-species-declines/blob/master/sdm_function.R
+# Keaton Wilson
+# keatonwilson@me.com
+# 2019-09-20
+
+
+# packages ----------------------------------------------------------------
+
+library(dismo)
+library(raster)
+library(tidyverse)
+library(blockCV)
+library(tidyverse)
+library(maxnet)
+library(ENMeval)
+if (Sys.getenv("JAVA_HOME")!="")
+  Sys.setenv(JAVA_HOME="")
+library(rJava)
+library(ggmap)
+
+# Importing big bioclim data ----------------------------------------------
+#' @examples
+#' bv_t1 = readRDS("./data/bioclim_t1.rds")
+#' bv_t2 = readRDS("./data/bioclim_t2.rds")
+
+#Bioclim data for U.S. west of 100th meridian
+bv_as <- readRDS("./data/as_terraclim.rds")
+
+bv_as_t1 <- bv_as[[1]]
+bv_as_t2 <- bv_as[[2]]
+
+# Prepping Occurrence Data ------------------------------------------------
+
+#' Initial prepping of occurence data to create SDMs
+#'
+#' @param data A dataframe outputted from the butt_obs script. Generated from 
+#' \code{\link[spocc]{occ}}
+#' @param year_split The year to split the data by. Non inclusive (e.g. 2000 will
+#'  split the  data into everything through 1999, and 2000-everything after).
+#'  Default is the year 2000. 
+#'
+#' @return A list four elements long: the first two are the occurence data split
+#'  by the year_split argument with 10k background points added. Additionally, 
+#'  they are converted to a spatial points dataframe. 
+#'  The second two items are the env rasters cropped 
+#'  to the area of the occurences for each subset split by year_split.
+#'
+#' @examples
+
+prep_data = function(data, year_split = 2000, env_raster_t1, env_raster_t2) {
+  
+  # selecting the pieces we want and separating by time
+  small_data = data %>%
+    select(name = true_name, longitude, latitude, date, year) %>%
+    mutate(time_frame = ifelse(year < year_split, "t1", "t2"))
+  
+  # calculating extent of occurences
+  max_lat = ceiling(max(small_data$latitude))
+  min_lat = floor(min(small_data$latitude))
+  max_lon = ceiling(max(small_data$longitude))
+  min_lon = floor(min(small_data$longitude))
+  
+  # added a 1º buffer in every direction
+  geographic_extent <- extent(x = c(min_lon-1, max_lon+1, min_lat-1, max_lat+1))
+  
+  # Crop bioclim data to geographic extent of species
+  bv_t1_cropped <- crop(x = env_raster_t1, y = geographic_extent)
+  bv_t2_cropped <- crop(x = env_raster_t2, y = geographic_extent)
+  
+  # Split by time period into two data frames
+  df_t1 = small_data %>% 
+    filter(time_frame == "t1")
+  df_t2 = small_data %>%
+    filter(time_frame == "t2")
+  
+  # print each to make sure it looks ok
+  print(glimpse(df_t1))
+  print(glimpse(df_t2))
+  
+  # Generate 10k background points for each one. 
+  bg_t1 = dismo::randomPoints(bv_t1_cropped, 10000)
+  colnames(bg_t1) = c("longitude", "latitude")
+  
+  bg_t2 = randomPoints(bv_t2_cropped, 10000)
+  colnames(bg_t2) = c("longitude", "latitude")
+  
+  # Merging background data and occurence data
+  df_comb_t1 = data.frame(df_t1) %>%
+    mutate(pb = 1) %>%
+    dplyr::select(pb, longitude, latitude) %>%
+    bind_rows(data.frame(bg_t1) %>% 
+                mutate(pb = 0))  %>%
+    mutate(Species = as.integer(pb)) %>%
+    dplyr::select(-pb)
+  
+  df_comb_t2 = data.frame(df_t2) %>%
+    mutate(pb = 1) %>%
+    dplyr::select(pb, longitude, latitude) %>%
+    bind_rows(data.frame(bg_t2) %>% 
+                mutate(pb = 0)) %>%
+    mutate(Species = as.integer(pb)) %>%
+    dplyr::select(-pb)
+  
+  # Changing to a spatial points data frame
+  df_sp_t1 = SpatialPointsDataFrame(df_comb_t1[,c("longitude","latitude")], 
+                                    df_comb_t1, 
+                                    proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")) 
+  df_sp_t1$time_frame = "t1"
+  df_sp_t2 = SpatialPointsDataFrame(df_comb_t2[,c("longitude","latitude")], 
+                                    df_comb_t2, 
+                                    proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
+  df_sp_t2$time_frame = "t2"
+  
+  #Converting to a list with the two dataframes
+  prepared_data_list = list(data = list(t1 = df_sp_t1, t2 = df_sp_t2),
+                            env_data = list(bv_t1_cropped, bv_t2_cropped))
+  #Names
+  bio_names = c()
+  for(i in 1:19){
+    bio_names[i] = paste0("Bio", i)
+  }
+  
+  names(prepared_data_list[[2]][[1]]) = bio_names
+  names(prepared_data_list[[2]][[2]]) = bio_names
+  
+  return(prepared_data_list)
+}
+
+#' Run prep_data function with west_iNat_cand ----------------------------------
+
+prep_data(data = west_iNat_cand, 
+          year_split = 2000, 
+          env_raster_t1 = bv_as_t1, env_raster_t2 = bv_as_t2)
+
+
+
+# Block CV ----------------------------------------------------------------
+#' Running blockCV with a preset config for this project
+#'
+#' @param prepped_data The prepped spatial points dataframe created by 
+#' \code{link{prep_data}}
+#' @param bv_raster the cropped raster associated with the same time period 
+#' as the prepped_data above. 
+#'
+#' @return a blockCV object that we will use in later analysis
+#'
+#' @examples
+run_block_cv = function(prepped_data, bv_raster){
+  
+  blocked = spatialBlock(speciesData = prepped_data,
+                         species = "Species",
+                         rasterLayer = bv_raster,
+                         theRange = 400000,
+                         k = 5, 
+                         selection = "random", 
+                         iteration = 250, 
+                         biomod2Format = TRUE, 
+                         xOffset = 0, 
+                         yOffset = 0, 
+                         progress = T, 
+                         showBlocks = F
+  )
+  return(blocked)
+}
+
+
+# Preparing data 2 ----------------------------------------------------------
+#' More data preparation prior to SDM building
+#'
+#' @param data Prepped spatial points datframe created by \code{link{prep_data}}
+#' @param env_raster the cropped raster associated with the same time period 
+#' as the prepped_data above.
+#'
+#' @return a dataframe with extracted environmental variables along with presence 
+#' for all of the occurence and background data
+#'
+#' @examples
+prep_data_2 = function(data, env_raster){
+  extra_prepped = raster::extract(env_raster, data, df = TRUE) %>%
+    bind_cols(as.data.frame(data)) %>%
+    drop_na() %>%
+    dplyr::select(-ID, Species, longitude, latitude, Bio1:Bio19)
+  return(extra_prepped)
+}
+
+
+# Train and test split ---------------------------------------
+
+train_test_split = function(extra_prepped_data, blocked_obj){
+  
+  extract_index = function(list_of_folds = NULL) {
+    for(k in 1:length(list_of_folds)){
+      train_index <- unlist(list_of_folds[[k]][1]) # extract the training set indices
+      test_index <- unlist(list_of_folds[[k]][2])# extract the test set indices
+    }
+    mini_list = list(train_index, test_index)
+    return(mini_list)
+  }
+  
+  indices = extract_index(blocked_obj$folds)
+  print(length(indices[[1]]))
+  print(length(indices[[2]]))
+  
+  #applying indexes and splitting data
+  training_data = extra_prepped_data[indices[[1]],]
+  test_data = extra_prepped_data[-indices[[2]],]
+  
+  return(list(training_data = training_data, 
+              test_data = test_data))
+}
+
+
+# Modeling ----------------------------------------------------------------
+
+model_func = function(data = NULL, env_raster, num_cores) {
+  data_occ = data %>%  #Generating occurence lat long
+    filter(Species == 1) %>%
+    dplyr::select(longitude, latitude) %>%
+    drop_na()
+  
+  data_bg = data %>% #Generating background lat long
+    filter(Species == 0) %>%
+    dplyr::select(longitude, latitude) %>%
+    drop_na()
+  
+  #Running the model
+  eval = ENMevaluate(occ = data_occ, 
+                     bg.coords = data_bg,
+                     env = env_raster,
+                     method = 'randomkfold', 
+                     kfolds = 5, 
+                     parallel = TRUE,
+                     numCores = num_cores,
+                     algorithm = 'maxent.jar')
+  return(eval)
+}
+
+
+# Evaluation plots ---------------------------------------------------------
+
+eval_plots = function(eval_object = NULL) {
+  par(mfrow=c(2,3))
+  eval.plot(eval_object@results)
+  eval.plot(eval_object@results, 'avg.test.AUC', legend = F)
+  eval.plot(eval_object@results, 'avg.diff.AUC', legend = F)
+  eval.plot(eval_object@results, 'avg.test.or10pct', legend = F)
+  eval.plot(eval_object@results, 'avg.test.orMTP', legend = F)
+  plot(eval_object@results$avg.test.AUC, eval_object@results$delta.AICc, bg=eval_object@results$features, pch=21, cex= eval_object@results$rm/2, xlab = "avg.test.AUC", ylab = 'delta.AICc', cex.lab = 1.5)
+  legend("topright", legend=unique(eval_object@results$features), pt.bg=eval_object@results$features, pch=21)
+  mtext("Circle size proportional to regularization multiplier value", cex = 0.6)
+  
+}
+
+
+# Model Selection ---------------------------------------------------------
+
+best_mod = function(model_obj){
+  best_index = as.numeric(row.names(model_obj@results[which(model_obj@results$avg.test.AUC== max(model_obj@results$avg.test.AUC)),]))[1]
+  
+  best_mod = model_obj@models[[best_index]]
+  return(list(best_mod, best_index))
+}
+
+
+# Evaluating on test data -------------------------------------------------
+
+evaluate_models = function(test_data, model, env_raster) {
+  test_data_occ = test_data %>%
+    filter(Species == 1) %>%
+    dplyr::select(longitude, latitude)
+  
+  bg_data = test_data %>%
+    filter(Species == 0) %>%
+    dplyr::select(longitude, latitude)
+  
+  ev = evaluate(test_data_occ, a = bg_data, model = model, x = env_raster)
+  return(ev)
+}
+
+
+# Building full models on all data ----------------------------------------
+
+full_model = function(models_obj, best_model_index, full_data = NULL, env_raster) {
+  auc_mod = models_obj@results[best_model_index,]
+  FC_best = as.character(auc_mod$features[1])
+  rm_best = auc_mod$rm
+  
+  
+  maxent.args = ENMeval::make.args(RMvalues = rm_best, fc = FC_best)
+  
+  # re calculating environmental raster
+  
+  
+  full_mod = maxent(env_raster, as.matrix(full_data[,1:2]), args = maxent.args[[1]])
+  return(full_mod)
+}
 
 
 
