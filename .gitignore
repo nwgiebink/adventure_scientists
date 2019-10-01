@@ -3,3 +3,11 @@
 .RData
 .Ruserdata
 *.Rproj
+data/as_terraclim.rds
+data/as_terraclim_test.rds
+data/west_as.csv
+data/west_iNat.csv
+phase1_report.html
+phase1_report.pdf
+simple_xy_wr.f90
+observations_heatmap.png
