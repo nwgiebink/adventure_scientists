@@ -317,6 +317,10 @@ get_bioclim = function(lat_range, lon_range, year_split) {
 #test
 # t = get_bioclim(lat_range = c(65, 66), lon_range = c(-101, -100), year_split = 2000)
 
+
+
+# Get Bioclim for Western U.S. --------------------------------------------
+
 #swlat 28.0 swlng -125.0 nelat 49.0 nelng -100.0
 as_terraclim <- get_bioclim(lat_range = c(28, 49), 
                             lon_range = c(-125, -100), 
@@ -328,3 +332,6 @@ saveRDS(as_terraclim, file = "data/as_terraclim.rds")
 as_terraclim_read <- readRDS("data/as_terraclim.rds")
 head(as_terraclim_read) #test read object
 head(as_terraclim) #compare with original object
+
+# How to call plot for individual layer
+# plot(raster::subset(as_terraclim[[2]], 1))
