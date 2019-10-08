@@ -63,6 +63,45 @@ map_cand_as <- get_map(c(left = -125, right = -100, bottom = 28, top = 49)) %>%
              aes(x = longitude, y = latitude, color = scientific_name)) +
   facet_wrap(~scientific_name)
 
+#' Function: prep data for SDM-building function (below)
+#' Split observed_on into date, year
+#' change scientific_name to true_name
+#' @param data_in The df to be modified
+
+pre_prep <- function(data_in){
+  mod = data_in %>%
+  separate(col ="observed_on", into = c("year", "month", "day"), 
+           sep = "-") %>%
+  unite(col = "date", "month", "day", sep = "-") %>%
+  rename("true_name" = "scientific_name", 
+         "Species" = "taxon_species_name",
+         "ID" = "id")
+  return(mod)
+}
+
+#' Function species_sep splits a dataframe into a list with separate dfs for each species
+#' into a list of dataframes for each individual species
+#' @param data_in The df to be manipulated
+#' @param tag String to 'tag' onto the end of each auto-generated name in the list  
+    
+species_sep <- function(data_in, tag){
+  data_in$true_name <- droplevels(data_in$true_name)
+  data_in$true_name <- str_replace(data_in$true_name, " ", "_")
+  data_in <- split(data_in, data_in$true_name)
+  new_names <- paste0(names(data_in), tag)
+  glimpse(data_in)
+  names(data_in) <- new_names
+  return(data_in)
+    }
+
+# apply pre_prep and species_sep function to AS and iNat dfs
+prepped_as <- pre_prep(west_as_cand)
+prepped_as <- species_sep(prepped_as, "_as")
+prepped_iNat <- pre_prep(west_iNat_cand)
+prepped_iNat <- species_sep(prepped_iNat, "_iNat")
+
+# access one df within the list e.g. prepped_iNat$Vanessa_cardui_iNat
+
 
 # Function for building butterfly SDMs -----------------------------------
 # Based on https://github.com/keatonwilson/butterfly-species-declines/blob/master/sdm_function.R
@@ -193,12 +232,21 @@ prep_data = function(data, year_split = 2000, env_raster_t1, env_raster_t2) {
   return(prepared_data_list)
 }
 
-#' Run prep_data function with west_iNat_cand ----------------------------------
+#' Run prep_data function with AS data -----------------------------------
 
-prep_data(data = west_iNat_cand, 
+G_patrobas_iNat <- prep_data(data = prepped_iNat$Gyrocheilus_patrobas_iNat, 
           year_split = 2000, 
           env_raster_t1 = bv_as_t1, env_raster_t2 = bv_as_t2)
 
+# CHECKPOINT
+# get a map of the data to see range size 
+# and determine optimal block size for Block CV function
+
+# Map G_patrobas from all iNaturalist data
+map_G_patrobas_iNat <- get_map(c(left = -125, right = -100, bottom = 28, top = 49)) %>%
+  ggmap() +
+  geom_point(data = prepped_iNat$Gyrocheilus_patrobas_iNat,
+             aes(x = longitude, y = latitude))
 
 
 # Block CV ----------------------------------------------------------------
@@ -208,16 +256,16 @@ prep_data(data = west_iNat_cand,
 #' \code{link{prep_data}}
 #' @param bv_raster the cropped raster associated with the same time period 
 #' as the prepped_data above. 
-#'
+#' @param block_size block size in m^2. Default = 400000
 #' @return a blockCV object that we will use in later analysis
 #'
 #' @examples
-run_block_cv = function(prepped_data, bv_raster){
+run_block_cv = function(prepped_data, bv_raster, block_size = 400000){
   
   blocked = spatialBlock(speciesData = prepped_data,
                          species = "Species",
                          rasterLayer = bv_raster,
-                         theRange = 400000,
+                         theRange = block_size,
                          k = 5, 
                          selection = "random", 
                          iteration = 250, 
@@ -229,6 +277,24 @@ run_block_cv = function(prepped_data, bv_raster){
   )
   return(blocked)
 }
+
+#' Run run_block_cv function with AS data -----------------------------------
+
+spatialAutoRange(rasterLayer = G_patrobas_iNat$env_data[[2]],
+                 sampleNumber = 5000,
+                 doParallel = TRUE,
+                 showPlots = TRUE)
+
+rangeExplorer(rasterLayer = G_patrobas_iNat$env_data[[2]],
+              speciesData = G_patrobas_iNat$data[[2]],
+              species = "Species",
+              minRange = 1000,
+              maxRange = 200000)
+
+run_block_cv(prepped_data = G_patrobas_iNat$data[[2]], 
+             bv_raster = G_patrobas_iNat$env_data[[2]],
+             block_size = 25000) # two blocks had 0 observations in the test
+                                  # set with 200,000
 
 
 # Preparing data 2 ----------------------------------------------------------
