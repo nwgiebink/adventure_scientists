@@ -94,6 +94,19 @@ species_sep <- function(data_in, tag){
   return(data_in)
     }
 
+# updated version: leaves true_names intact
+species_sep <- function(data_in, tag){
+  data_in$true_name <- droplevels(data_in$true_name)
+  data_in <- mutate(data_in, list_name = true_name)
+  data_in$list_name <- str_replace(data_in$list_name, " ", "_")
+  data_in <- split(data_in, data_in$list_name)
+  new_names <- paste0(names(data_in), tag)
+  glimpse(data_in)
+  names(data_in) <- new_names
+  return(data_in)
+}
+
+
 # apply pre_prep and species_sep function to AS and iNat dfs
 prepped_as <- pre_prep(west_as_cand)
 prepped_as <- species_sep(prepped_as, "_as")
@@ -157,8 +170,10 @@ prep_data = function(data, year_split = 2000, env_raster_t1, env_raster_t2) {
   
   # selecting the pieces we want and separating by time
   small_data = data %>%
-    select(name = true_name, longitude, latitude, date, year) %>%
+    dplyr::select(name = true_name, longitude, latitude, date, year) %>%
     mutate(time_frame = ifelse(year < year_split, "t1", "t2"))
+    #2019/10/15 added dplyr::select to resolve error: "unable to find an
+    #inherited method for function 'select' for signature '"data.frame"'
   
   # calculating extent of occurences
   max_lat = ceiling(max(small_data$latitude))
@@ -232,7 +247,7 @@ prep_data = function(data, year_split = 2000, env_raster_t1, env_raster_t2) {
   return(prepared_data_list)
 }
 
-#' Run prep_data function with AS data -----------------------------------
+#' Run prep_data function with iNat data ---------------------------------
 
 G_patrobas_iNat <- prep_data(data = prepped_iNat$Gyrocheilus_patrobas_iNat, 
           year_split = 2000, 
@@ -278,7 +293,7 @@ run_block_cv = function(prepped_data, bv_raster, block_size = 400000){
   return(blocked)
 }
 
-#' Run run_block_cv function with AS data -----------------------------------
+#' Run run_block_cv function with iNat data -----------------------------------
 
 spatialAutoRange(rasterLayer = G_patrobas_iNat$env_data[[2]],
                  sampleNumber = 5000,
@@ -291,16 +306,16 @@ rangeExplorer(rasterLayer = G_patrobas_iNat$env_data[[2]],
               minRange = 1000,
               maxRange = 200000)
 
-run_block_cv(prepped_data = G_patrobas_iNat$data[[2]], 
+G_patrobas_iNat_blocked <- run_block_cv(prepped_data = G_patrobas_iNat$data[[2]], 
              bv_raster = G_patrobas_iNat$env_data[[2]],
-             block_size = 25000) # two blocks had 0 observations in the test
-                                  # set with 200,000
+             block_size = 25000) # all blocks nonzero
 
 
 # Preparing data 2 ----------------------------------------------------------
 #' More data preparation prior to SDM building
 #'
 #' @param data Prepped spatial points datframe created by \code{link{prep_data}}
+#' NOTE: must index an individual item in the list e.g. data$data[[2]], data$env_data[[2]]
 #' @param env_raster the cropped raster associated with the same time period 
 #' as the prepped_data above.
 #'
@@ -316,6 +331,9 @@ prep_data_2 = function(data, env_raster){
   return(extra_prepped)
 }
 
+#' Run prep_data2 function with iNat data --------------------------------
+
+G_patrobas_iNat2 <- prep_data_2(G_patrobas_iNat$data[[2]], G_patrobas_iNat$env_data[[2]])
 
 # Train and test split ---------------------------------------
 
@@ -342,6 +360,8 @@ train_test_split = function(extra_prepped_data, blocked_obj){
               test_data = test_data))
 }
 
+#' Run train_test_split function with iNat data -----------------------
+G_patrobas_iNat2_split <- train_test_split(G_patrobas_iNat2, G_patrobas_iNat_blocked)
 
 # Modeling ----------------------------------------------------------------
 
@@ -368,6 +388,8 @@ model_func = function(data = NULL, env_raster, num_cores) {
   return(eval)
 }
 
+#' Run model_func function with iNat data -----------------------
+model_func(G_patrobas_iNat2_split$training_data, G_patrobas_iNat$env_data[[2]], 4)
 
 # Evaluation plots ---------------------------------------------------------
 
