@@ -26,17 +26,17 @@ west_iNat_only <- filter(west_iNat, !(west_iNat$id %in% as_observations$id))
 west_iNat_cand <- filter(west_iNat, scientific_name == "Libytheana carinenta"|
                            scientific_name == "Celastrina echo"|
                            scientific_name == "Gyrocheilus patrobas"|
-                           scientific_name == "Eurema mexica"|
+                           scientific_name == "Eurema mexicana"|
                            scientific_name == "Vanessa cardui")
 west_iNat_only_cand <- filter(west_iNat_only, scientific_name == "Libytheana carinenta"|
                                 scientific_name == "Celastrina echo"|
                                 scientific_name == "Gyrocheilus patrobas"|
-                                scientific_name == "Eurema mexica"|
+                                scientific_name == "Eurema mexicana"|
                                 scientific_name == "Vanessa cardui")
 west_as_cand <- filter(west_as, scientific_name == "Libytheana carinenta"|
                          scientific_name == "Celastrina echo"|
                          scientific_name == "Gyrocheilus patrobas"|
-                         scientific_name == "Eurema mexica"|
+                         scientific_name == "Eurema mexicana"|
                          scientific_name == "Vanessa cardui")
 
 
@@ -49,6 +49,14 @@ map_cand <- get_map(c(left = -125, right = -100, bottom = 28, top = 49)) %>%
   geom_point(data = west_iNat_cand,
              aes(x = longitude, y = latitude, color = scientific_name)) +
   facet_wrap(~scientific_name)
+
+map_cand_AZ <- get_map(c(left = -115, right = -105, bottom = 28, top = 38)) %>%
+  ggmap() +
+  geom_point(data = west_iNat_cand,
+             aes(x = longitude, y = latitude, color = scientific_name)) +
+  facet_wrap(~scientific_name)
+
+
   # Map west_iNat_only_cand
 map_cand_iNat <- get_map(c(left = -125, right = -100, bottom = 28, top = 49)) %>%
   ggmap() +
@@ -107,11 +115,16 @@ species_sep <- function(data_in, tag){
 }
 
 
-# apply pre_prep and species_sep function to AS and iNat dfs
+# apply pre_prep and species_sep function 
+  # AS data
 prepped_as <- pre_prep(west_as_cand)
 prepped_as <- species_sep(prepped_as, "_as")
+  # iNat data
 prepped_iNat <- pre_prep(west_iNat_cand)
 prepped_iNat <- species_sep(prepped_iNat, "_iNat")
+  #iNat only data
+prepped_iNat_only <- pre_prep(west_iNat_only_cand)
+prepped_iNat_only <- species_sep(prepped_iNat_only, "_iNat_only")
 
 # access one df within the list e.g. prepped_iNat$Vanessa_cardui_iNat
 
@@ -257,12 +270,49 @@ G_patrobas_iNat <- prep_data(data = prepped_iNat$Gyrocheilus_patrobas_iNat,
 # get a map of the data to see range size 
 # and determine optimal block size for Block CV function
 
-# Map G_patrobas from all iNaturalist data
+# Map G_patrobas
+  # all iNaturalist data
 map_G_patrobas_iNat <- get_map(c(left = -125, right = -100, bottom = 28, top = 49)) %>%
   ggmap() +
   geom_point(data = prepped_iNat$Gyrocheilus_patrobas_iNat,
              aes(x = longitude, y = latitude))
+map_G_patrobas_iNat_AZ <- get_map(c(left = -115, right = -105, bottom = 28, top = 38)) %>%
+  ggmap() +
+  geom_point(data = prepped_iNat$Gyrocheilus_patrobas_iNat,
+             aes(x = longitude, y = latitude))
+  # AS data
+map_G_patrobas_as_AZ <- get_map(c(left = -115, right = -105, bottom = 28, top = 38)) %>%
+  ggmap() +
+  geom_point(data = prepped_as$Gyrocheilus_patrobas_as,
+             aes(x = longitude, y = latitude))
 
+# Map other candidates
+map_C_echo_iNat_AZ <- get_map(c(left = -115, right = -105, bottom = 28, top = 38)) %>%
+  ggmap() +
+  geom_point(data = prepped_iNat$Celastrina_echo_iNat,
+             aes(x = longitude, y = latitude))
+map_C_echo_as_AZ <- get_map(c(left = -115, right = -105, bottom = 28, top = 38)) %>%
+  ggmap() +
+  geom_point(data = prepped_as$Celastrina_echo_as,
+             aes(x = longitude, y = latitude))
+
+map_L_carinenta_iNat_AZ <- get_map(c(left = -115, right = -105, bottom = 28, top = 38)) %>%
+  ggmap() +
+  geom_point(data = prepped_iNat$Libytheana_carinenta_iNat,
+             aes(x = longitude, y = latitude))
+map_L_carinenta_as_AZ <- get_map(c(left = -115, right = -105, bottom = 28, top = 38)) %>%
+  ggmap() +
+  geom_point(data = prepped_as$Libytheana_carinenta_as,
+             aes(x = longitude, y = latitude))
+
+map_V_cardui_iNat_AZ <- get_map(c(left = -115, right = -105, bottom = 28, top = 38)) %>%
+  ggmap() +
+  geom_point(data = prepped_iNat$Vanessa_cardui_iNat,
+             aes(x = longitude, y = latitude))
+map_V_cardui_as_AZ <- get_map(c(left = -115, right = -105, bottom = 28, top = 38)) %>%
+  ggmap() +
+  geom_point(data = prepped_as$Vanessa_cardui_as,
+             aes(x = longitude, y = latitude))
 
 # Block CV ----------------------------------------------------------------
 #' Running blockCV with a preset config for this project
@@ -294,21 +344,21 @@ run_block_cv = function(prepped_data, bv_raster, block_size = 400000){
 }
 
 #' Run run_block_cv function with iNat data -----------------------------------
-
+  # recommended range
 spatialAutoRange(rasterLayer = G_patrobas_iNat$env_data[[2]],
                  sampleNumber = 5000,
                  doParallel = TRUE,
                  showPlots = TRUE)
-
+  #recommeded range based on rangeExplorer
 rangeExplorer(rasterLayer = G_patrobas_iNat$env_data[[2]],
               speciesData = G_patrobas_iNat$data[[2]],
               species = "Species",
               minRange = 1000,
               maxRange = 200000)
-
+  # run the function
 G_patrobas_iNat_blocked <- run_block_cv(prepped_data = G_patrobas_iNat$data[[2]], 
              bv_raster = G_patrobas_iNat$env_data[[2]],
-             block_size = 25000) # all blocks nonzero
+             block_size = 25000) #determined by decreasing until all blocks nonzero
 
 
 # Preparing data 2 ----------------------------------------------------------
@@ -389,7 +439,11 @@ model_func = function(data = NULL, env_raster, num_cores) {
 }
 
 #' Run model_func function with iNat data -----------------------
-model_func(G_patrobas_iNat2_split$training_data, G_patrobas_iNat$env_data[[2]], 4)
+G_patrobas_iNat_model <- 
+  model_func(G_patrobas_iNat2_split$training_data, G_patrobas_iNat$env_data[[2]], 6)
+
+  # save model as .rds
+saveRDS(G_patrobas_iNat_model, file = "data/G_patrobas_inat_model.rds")
 
 # Evaluation plots ---------------------------------------------------------
 
