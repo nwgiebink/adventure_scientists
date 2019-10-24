@@ -445,6 +445,8 @@ G_patrobas_iNat_model <-
   # save model as .rds
 saveRDS(G_patrobas_iNat_model, file = "data/G_patrobas_inat_model.rds")
 
+G_patrobas_iNat_model <- readRDS("data/G_patrobas_inat_model.rds")
+
 # Evaluation plots ---------------------------------------------------------
 
 eval_plots = function(eval_object = NULL) {
@@ -460,6 +462,9 @@ eval_plots = function(eval_object = NULL) {
   
 }
 
+# Run eval_plots with G_patrobas
+G_patrobas_iNat_eval <- eval_plots(G_patrobas_iNat_model)
+
 
 # Model Selection ---------------------------------------------------------
 
@@ -469,6 +474,10 @@ best_mod = function(model_obj){
   best_mod = model_obj@models[[best_index]]
   return(list(best_mod, best_index))
 }
+
+# Run best_mod() on G_patrobas
+
+G_patrobas_iNat_best <- best_mod(G_patrobas_iNat_model)
 
 
 # Evaluating on test data -------------------------------------------------
@@ -486,8 +495,14 @@ evaluate_models = function(test_data, model, env_raster) {
   return(ev)
 }
 
+# run
 
-# Building full models on all data ----------------------------------------
+G_patrobas_iNat_eval <- evaluate_models(test_data = G_patrobas_iNat2_split$test_data, 
+                                        model = G_patrobas_iNat_model@models[[14]], 
+                                        env_raster = G_patrobas_iNat$env_data[[2]]) 
+                                        #index only t2
+
+  # Building full models on all data ----------------------------------------
 
 full_model = function(models_obj, best_model_index, full_data = NULL, env_raster) {
   auc_mod = models_obj@results[best_model_index,]
@@ -505,7 +520,39 @@ full_model = function(models_obj, best_model_index, full_data = NULL, env_raster
 }
 
 
+# run full_mod for G. patrobas
+
+G_patrobas_iNat_full <- full_model(models_obj = G_patrobas_iNat_model, 
+                                   best_model_index = G_patrobas_iNat_best[[2]], 
+                                   full_data = G_patrobas_iNat_model@occ.pts, 
+                                   env_raster = G_patrobas_iNat$env_data[[2]]) #index t2
 
 
+# testing
+
+auc_mod <- G_patrobas_iNat_model@results[14,]
+FC_best = as.character(auc_mod$features[1])
+rm_best = auc_mod$rm
 
 
+maxent.args = ENMeval::make.args(RMvalues = rm_best, fc = FC_best)
+
+full_mod = maxent(G_patrobas_iNat$env_data[[2]], 
+                  as.matrix(G_patrobas_iNat_model@occ.pts[,1:2]),
+                  args = maxent.args[[1]])
+
+# Model Plots --------------------------------------------------
+# variable contribution plot
+G_patrobas_iNat_vars <- plot(G_patrobas_iNat_full)
+  # comes out as a vector for some reason
+
+# make predictions using model
+# predict()
+
+
+# make a spatial pixels dataframe from predictions
+  
+
+# use geom_tile to plot predictions
+# cloglog (P(occ))
+# threshold map 
