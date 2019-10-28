@@ -565,6 +565,7 @@ pred_Gpa_iNat <- predict(object = G_patrobas_iNat_full,
                          x = G_patrobas_iNat$env_data[[2]],
                          ext = G_patrobas_iNat$env_data[[2]]@extent,
                          args = 'outputformat=cloglog')
+                          # cloglog
 
 # make a spatial pixels dataframe from predictions
 pred_Gpa_iNat <- as(pred_Gpa_iNat, 
@@ -573,11 +574,8 @@ pred_Gpa_iNat <- as.data.frame(pred_Gpa_iNat) %>%
   rename("value" = "layer")
 
 # use geom_tile to plot predictions
-# cloglog (P(occ))
-# threshold map 
 
 # basic ggmap
-
 map_Gpa_iNat <- get_map(c(left = -113, right = -107, bottom = 28, top = 36)) %>%
   ggmap() +
   geom_tile(data = pred_Gpa_iNat, 
@@ -585,7 +583,8 @@ map_Gpa_iNat <- get_map(c(left = -113, right = -107, bottom = 28, top = 36)) %>%
   scale_fill_viridis_c(name = "Probability of Occurence") +
   guides(alpha = FALSE)
 map_Gpa_iNat
-  # To do: change underlying map to black-and-white
-  #get_map(... color = "bw") has not worked
-
-
+  # To do: 
+  # change underlying map to black-and-white
+  # get_map(... color = "bw") has not worked
+  # Threshold map
+  
