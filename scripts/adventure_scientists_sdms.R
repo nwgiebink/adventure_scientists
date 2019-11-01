@@ -19,6 +19,8 @@ G_patrobas_iNat_best <- readRDS("data/G_patrobas_iNat_best.rds")
 G_patrobas_iNat_eval <- readRDS("data/G_patrobas_iNat_eval.rds")
 G_patrobas_iNat_full <- readRDS("data/G_patrobas_iNat_full.rds")
 
+Gpa_iNat_only_blocked <- readRDS("data/Gpa_iNat_only_blocked.rds")
+
 # Data from fresh start
   #All research-grade AS and iNat butterfly (Papilionoidea) 
   #records within swlat 28.0 swlng -125.0 nelat 49.0 nelng -100.0
@@ -265,13 +267,19 @@ prep_data = function(data, year_split = 2000, env_raster_t1, env_raster_t2) {
   return(prepared_data_list)
 }
 
-#' Run prep_data function with iNat data ---------------------------------
+# Run prep_data function with iNat data ---------------------------------
 
 G_patrobas_iNat <- prep_data(data = prepped_iNat$Gyrocheilus_patrobas_iNat, 
           year_split = 2000, 
           env_raster_t1 = bv_as_t1, env_raster_t2 = bv_as_t2)
 
 saveRDS(G_patrobas_iNat, 'data/G_patrobas_iNat.rds')
+
+Gpa_iNat_only <- prep_data(data = prepped_iNat_only$Gyrocheilus_patrobas_iNat_only,
+                           year_split = 2000,
+                           env_raster_t1 = bv_as_t1, 
+                           env_raster_t2 = bv_as_t2)
+
 
 # CHECKPOINT
 # get a map of the data to see range size 
@@ -369,6 +377,11 @@ G_patrobas_iNat_blocked <- run_block_cv(prepped_data = G_patrobas_iNat$data[[2]]
 
 saveRDS(G_patrobas_iNat_blocked, "data/G_patrobas_iNat_blocked.rds")
 
+Gpa_iNat_only_blocked <- run_block_cv(prepped_data = Gpa_iNat_only$data[[2]], 
+                                        bv_raster = Gpa_iNat_only$env_data[[2]],
+                                        block_size = 25000)
+saveRDS(Gpa_iNat_only_blocked, "data/Gpa_iNat_only_blocked.rds")
+
 # Preparing data 2 ----------------------------------------------------------
 #' More data preparation prior to SDM building
 #'
@@ -385,7 +398,8 @@ prep_data_2 = function(data, env_raster){
   extra_prepped = raster::extract(env_raster, data, df = TRUE) %>%
     bind_cols(as.data.frame(data)) %>%
     drop_na() %>%
-    dplyr::select(-ID, Species, longitude, latitude, Bio1:Bio19)
+    dplyr::select(-ID, Species, longitude, latitude, Bio1:Bio19) %>%
+    filter_all(all_vars(. != -Inf)) # remove rows with -Inf values at this stage
   return(extra_prepped)
 }
 
@@ -393,6 +407,9 @@ prep_data_2 = function(data, env_raster){
 
 G_patrobas_iNat2 <- prep_data_2(G_patrobas_iNat$data[[2]], G_patrobas_iNat$env_data[[2]])
 write.csv(G_patrobas_iNat2, "data/G_patrobas_iNat2.csv")
+
+Gpa_iNat_only2 <- prep_data_2(Gpa_iNat_only$data[[2]], Gpa_iNat_only$env_data[[2]])
+
 
 # Train and test split ---------------------------------------
 
@@ -412,8 +429,10 @@ train_test_split = function(extra_prepped_data, blocked_obj){
   print(length(indices[[2]]))
   
   #applying indexes and splitting data
-  training_data = extra_prepped_data[indices[[1]],]
-  test_data = extra_prepped_data[-indices[[2]],]
+  training_data = extra_prepped_data[indices[[1]],] %>%
+    drop_na()
+  test_data = extra_prepped_data[-indices[[2]],] %>%
+    drop_na()
   
   return(list(training_data = training_data, 
               test_data = test_data))
@@ -423,6 +442,8 @@ train_test_split = function(extra_prepped_data, blocked_obj){
 G_patrobas_iNat2_split <- train_test_split(G_patrobas_iNat2, G_patrobas_iNat_blocked)
 
 saveRDS(G_patrobas_iNat2_split, "data/G_patrobas_iNat2_split.rds")
+
+Gpa_iNat_only2_split <- train_test_split(Gpa_iNat_only2, Gpa_iNat_only_blocked)
 
 # Modeling ----------------------------------------------------------------
 
@@ -443,13 +464,13 @@ model_func = function(data = NULL, env_raster, num_cores) {
                      env = env_raster,
                      method = 'randomkfold', 
                      kfolds = 5, 
-                     parallel = TRUE,
+                     parallel = TRUE, # originally TRUE
                      numCores = num_cores,
-                     algorithm = 'maxent.jar')
+                     algorithm = 'maxnet') # originally maxent.jar
   return(eval)
 }
 
-#' Run model_func function with iNat data -----------------------
+h# Run model_func function with iNat data -----------------------
 G_patrobas_iNat_model <- 
   model_func(G_patrobas_iNat2_split$training_data, G_patrobas_iNat$env_data[[2]], 6)
 
@@ -457,6 +478,47 @@ G_patrobas_iNat_model <-
 saveRDS(G_patrobas_iNat_model, file = "data/G_patrobas_inat_model.rds")
 
 G_patrobas_iNat_model <- readRDS("data/G_patrobas_inat_model.rds")
+
+Gpa_iNat_only_model <- model_func(Gpa_iNat_only2_split$training_data,
+                                  Gpa_iNat_only$env_data[[2]], 6)
+saveRDS(Gpa_iNat_only_model, file = "data/Gpa_iNat_only_model.rds")
+
+# model_func troubleshooting ----
+
+# inf_check functions
+
+inf_check <- function(list){
+  for (i in list){
+  sums <- sum(is.infinite(i))
+  print(sums)
+  }
+}
+
+inf_check2 <- function(list){
+  for (i in list){
+    sums <- sum(is.infinite(i))
+  }
+  if_else(sum(sums) > 0,
+          print("Inf exists"), print("no Inf"))
+}
+
+# test: remove Inf
+# model_func = function(data = NULL, env_raster, num_cores) {
+
+# modify part of model_func to remove Inf values from data_occ  
+  test_df <- Gpa_iNat_only2_split$training_data %>%  #Generating occurence lat long
+    filter(Species == 0) %>%
+    dplyr::select(longitude, latitude)
+    test_df <- test_df[is.finite(rowSums(test_df)),] %>%
+      drop_na()
+    # no change with data_occ in this case...
+    # the problem is in the env_raster
+
+    # remove Inf values from env_raster
+  test_env <- Gpa_iNat_only$env_data[[2]]
+  test_env <- test_env[is.finite(rowSums(test_env)),] %>% 
+    drop_na()
+  
 
   # Evaluation plots ---------------------------------------------------------
 
@@ -476,6 +538,11 @@ eval_plots = function(eval_object = NULL) {
 # Run eval_plots with G_patrobas
 G_patrobas_iNat_eval <- eval_plots(G_patrobas_iNat_model)
 
+Gpa_iNat_only_eval <- eval_plots(Gpa_iNat_only_model)
+
+
+
+
 
 # Model Selection ---------------------------------------------------------
 
@@ -490,6 +557,9 @@ best_mod = function(model_obj){
 
 G_patrobas_iNat_best <- best_mod(G_patrobas_iNat_model)
 saveRDS(G_patrobas_iNat_best, "data/G_patrobas_iNat_best.rds")
+
+Gpa_iNat_only_best <- best_mod(Gpa_iNat_only_model)
+
 
 # Evaluating on test data -------------------------------------------------
 
@@ -514,9 +584,13 @@ G_patrobas_iNat_eval <- evaluate_models(test_data = G_patrobas_iNat2_split$test_
                                         #index only t2
 saveRDS(G_patrobas_iNat_eval, "data/G_patrobas_iNat_eval.rds")
 
-  # Building full models on all data ----------------------------------------
+Gpa_iNat_only_eval2 <- evaluate_models(test_data = Gpa_iNat_only2_split$test_data,
+                                       model = Gpa_iNat_only_model@models[[12]],
+                                       env_raster = Gpa_iNat_only$env_data[[2]])
 
-full_model = function(models_obj, best_model_index, full_data = NULL, env_raster) {
+# Building full models on all data (maxent)----------------------------------------
+
+full_model_maxent = function(models_obj, best_model_index, full_data = NULL, env_raster) {
   auc_mod = models_obj@results[best_model_index,]
   FC_best = as.character(auc_mod$features[1])
   rm_best = auc_mod$rm
@@ -531,6 +605,22 @@ full_model = function(models_obj, best_model_index, full_data = NULL, env_raster
   return(full_mod)
 }
 
+# Building full models on all data (maxnet)----------------------------------------
+
+full_model_maxnet = function(models_obj, best_model_index, full_data = NULL, env_raster) {
+  auc_mod = models_obj@results[best_model_index,]
+  FC_best = tolower(as.character(auc_mod$features[1]))
+  rm_best = auc_mod$rm
+  
+  full_mod = maxnet(p = full_data$Species, 
+                    data = full_data[,1:19],
+                    maxnet.formula(full_data$Species,
+                                   full_data[,1:19], 
+                                   classes = FC_best), 
+                    regmult = rm_best)
+  return(full_mod)
+}
+
 
 # run full_mod iNat -----------
 
@@ -540,18 +630,71 @@ G_patrobas_iNat_full <- full_model(models_obj = G_patrobas_iNat_model,
                                    env_raster = G_patrobas_iNat$env_data[[2]]) #index t2
 saveRDS(G_patrobas_iNat_full, "data/G_patrobas_iNat_full.rds")
 
+Gpa_iNat_only_full <- full_model_maxnet(models_obj = Gpa_iNat_only_model,
+                                 best_model_index = Gpa_iNat_only_best[[2]],
+                                 full_data = Gpa_iNat_only2,
+                                 env_raster = Gpa_iNat_only2)
+saveRDS(Gpa_iNat_only_full, "data/Gpa_iNat_only_full.rds")
+
 # troubleshooting full_mod ----
 
-auc_mod <- G_patrobas_iNat_model@results[14,]
-FC_best = as.character(auc_mod$features[1])
+# make input for classes and regmult
+
+auc_mod = Gpa_iNat_only_model@results[12,]
+FC_best = tolower(as.character(auc_mod$features[1]))
 rm_best = auc_mod$rm
 
+# make df from environmental raster (data)
+env_data <- raster::extract(Gpa_iNat_only$env_data[[2]], Gpa_iNat_only$data[[2]], df = TRUE) %>%
+  select(-ID)
+  # better to just go with the df from Gpa_iNat_only2 (output: prep_data function)?
+  
+# try using Gpa_iNat_only2 for env. raster
+# troubleshooting "Error in sapply(colnames(mm), function(n) { : 
+# non-numeric argument to binary operator"
+# remove t2 column from Gpa_iNat_only2
+env_data <- select(Gpa_iNat_only2, -time_frame)
 
+# make df of occurence points (p)
+# not using Gpa_iNat_only_model@occ.pts (as before) because it has fewer points
+# than Gpa_inat_only2 for some reason...
+p <- Gpa_iNat_only2 %>% filter(Species == 1) %>%
+  select(longitude.1, latitude.1)
+
+# make full model using maxnet
+full_mod = maxnet(p = p, 
+                  data = env_data,
+                  maxnet.formula(p,
+                                 env_data, 
+                                 classes = FC_best), 
+                  regmult = rm_best)
+return(full_mod)
+
+
+# trying again: identical to Keaton's code
+full_mod = maxnet(p = Gpa_iNat_only2$Species, 
+                  data = Gpa_iNat_only2[,1:19],
+                  maxnet.formula(Gpa_iNat_only2$Species,
+                                 Gpa_iNat_only2[,1:19], 
+                                 classes = FC_best), 
+                  regmult = rm_best)
+return(full_mod)
+
+# Previous troubleshooting with maxent & iNat + AS data
 maxent.args = ENMeval::make.args(RMvalues = rm_best, fc = FC_best)
 
 full_mod = maxent(G_patrobas_iNat$env_data[[2]], 
                   as.matrix(G_patrobas_iNat_model@occ.pts[,1:2]),
                   args = maxent.args[[1]])
+
+#full_mod = maxnet(p = full_data$Species, data = full_data[,1:19],
+#                  maxnet.formula(full_data$Species, 
+#                                 full_data[,1:19], 
+#                                 classes = FC_best), 
+#                  regmult = rm_best)
+#return(full_mod)
+
+
 
 
 # Model Plots --------------------------------------------------
@@ -561,11 +704,20 @@ G_patrobas_iNat_vars <- plot(G_patrobas_iNat_full)
 
 # make predictions using model
 # predict()
-pred_Gpa_iNat <- predict(object = G_patrobas_iNat_full,
+pred_Gpa_iNat <- dismo::predict(object = G_patrobas_iNat_full,
                          x = G_patrobas_iNat$env_data[[2]],
                          ext = G_patrobas_iNat$env_data[[2]]@extent,
                          args = 'outputformat=cloglog')
                           # cloglog
+            # DOES NOT WORK: JAVA ISSUES
+
+pred_Gpa_iNat_only <- dismo::predict(object = Gpa_iNat_only_full,
+                              x = Gpa_iNat_only$env_data[[2]],
+                              ext = Gpa_iNat_only$env_data[[2]]@extent,
+                              args = 'outputformat=cloglog')
+            # DOES NOT WORK WITH MAXNET OUTPUT (?)
+
+predict.maxnetRaster()
 
 # make a spatial pixels dataframe from predictions
 pred_Gpa_iNat <- as(pred_Gpa_iNat, 
@@ -587,4 +739,10 @@ map_Gpa_iNat
   # change underlying map to black-and-white
   # get_map(... color = "bw") has not worked
   # Threshold map
+
+
+
+
+
+
   
