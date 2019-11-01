@@ -279,6 +279,7 @@ Gpa_iNat_only <- prep_data(data = prepped_iNat_only$Gyrocheilus_patrobas_iNat_on
                            year_split = 2000,
                            env_raster_t1 = bv_as_t1, 
                            env_raster_t2 = bv_as_t2)
+saveRDS(Gpa_iNat_only, 'data/Gpa_iNat_only.rds')
 
 
 # CHECKPOINT
@@ -717,13 +718,24 @@ pred_Gpa_iNat_only <- dismo::predict(object = Gpa_iNat_only_full,
                               args = 'outputformat=cloglog')
             # DOES NOT WORK WITH MAXNET OUTPUT (?)
 
-predict.maxnetRaster()
+pred_Gpa_iNat_only <- maxnet.predictRaster(mod = Gpa_iNat_only_full,
+                                           env = Gpa_iNat_only$env_data[[2]],
+                                           type = "cloglog",
+                                           clamp = TRUE)
+
+
 
 # make a spatial pixels dataframe from predictions
 pred_Gpa_iNat <- as(pred_Gpa_iNat, 
                     "SpatialPixelsDataFrame")
 pred_Gpa_iNat <- as.data.frame(pred_Gpa_iNat) %>%
   rename("value" = "layer")
+
+pred_Gpa_iNat_only2 <- as(pred_Gpa_iNat_only, 
+                    "SpatialPixelsDataFrame")
+pred_Gpa_iNat_only2 <- as.data.frame(pred_Gpa_iNat_only2) %>%
+  rename("value" = "layer")
+
 
 # use geom_tile to plot predictions
 
@@ -740,9 +752,20 @@ map_Gpa_iNat
   # get_map(... color = "bw") has not worked
   # Threshold map
 
+# basic ggmap
+map_Gpa_iNat_only <- get_map(c(left = -113, right = -107, bottom = 28, top = 36)) %>%
+  ggmap() +
+  geom_tile(data = pred_Gpa_iNat_only2, 
+            aes(x, y, fill=value, alpha = value)) +
+  scale_fill_viridis_c(name = "Probability of Occurence") +
+  guides(alpha = FALSE)
+map_Gpa_iNat_only
+ggsave('maps/map_Gpa_iNat_only.png', map_Gpa_iNat_only)
+  
 
-
-
-
-
+ggplot() +
+  geom_tile(data = pred_Gpa_iNat_only2, 
+            aes(x, y, fill=value, alpha = value*1.5)) +
+  scale_fill_viridis_c(name = "Probability of Occurence") +
+  guides(alpha = FALSE)
   
