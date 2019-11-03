@@ -6,6 +6,7 @@
 
 #Packages ----------------------------------------------------------------
 library(tidyverse)
+library(ggpubr)
 
 #Data --------------------------------------------------------------------
   
@@ -29,7 +30,21 @@ west_iNat <- read.csv("data/west_iNat.csv")
 
   #remove Adventure Scientists observations from iNat
 west_as_observations <- select(west_as, id)
-west_iNat_only <- filter(west_iNat, !(west_iNat$id %in% as_observations$id))
+west_iNat_only <- filter(west_iNat, !(west_iNat$id %in% west_as_observations$id))
+  
+  # caught error: failed to remove 54 AS observations from west_iNat_only 
+  # before building G. patrobas SDMs
+error <- filter(west_iNat, !(west_iNat$id %in% as_observations$id))
+missed <- filter(error, !(error$id %in% west_iNat_only$id)) %>%
+  group_by(scientific_name) %>%
+  summarise(n = n()) %>%
+  filter(scientific_name == "Libytheana carinenta"|
+           scientific_name == "Celastrina echo"|
+           scientific_name == "Gyrocheilus patrobas"|
+           scientific_name == "Eurema mexicana"|
+           scientific_name == "Vanessa cardui") # only care if error affected candidates
+missed # result: failed to remove 8 V. cardui observations
+       # G patrobas SDMs unaffected by error
 
   # Candidates all data (iNat + AS)
 west_iNat_cand <- filter(west_iNat, scientific_name == "Libytheana carinenta"|
@@ -281,6 +296,18 @@ Gpa_iNat_only <- prep_data(data = prepped_iNat_only$Gyrocheilus_patrobas_iNat_on
                            env_raster_t2 = bv_as_t2)
 saveRDS(Gpa_iNat_only, 'data/Gpa_iNat_only.rds')
 
+# lca = Libytheana carinenta
+lca_iNat <- prep_data(data = prepped_iNat$Libytheana_carinenta_iNat,
+                           year_split = 2000,
+                           env_raster_t1 = bv_as_t1, 
+                           env_raster_t2 = bv_as_t2)
+
+lca_iNat_only <- prep_data(data = prepped_iNat_only$Libytheana_carinenta_iNat_only,
+                           year_split = 2000,
+                           env_raster_t1 = bv_as_t1, 
+                           env_raster_t2 = bv_as_t2)
+saveRDS(lca_iNat, 'data/lca_iNat.rds')
+saveRDS(lca_iNat_only, 'data/lca_iNat_only.rds')
 
 # CHECKPOINT
 # get a map of the data to see range size 
@@ -360,6 +387,7 @@ run_block_cv = function(prepped_data, bv_raster, block_size = 400000){
 }
 
 # Run run_block_cv iNat -----------------------------------
+# G patrobas  
   # recommended range
 spatialAutoRange(rasterLayer = G_patrobas_iNat$env_data[[2]],
                  sampleNumber = 5000,
@@ -383,6 +411,14 @@ Gpa_iNat_only_blocked <- run_block_cv(prepped_data = Gpa_iNat_only$data[[2]],
                                         block_size = 25000)
 saveRDS(Gpa_iNat_only_blocked, "data/Gpa_iNat_only_blocked.rds")
 
+# Libytheana carinenta
+lca_iNat_blocked <- run_block_cv(prepped_data = lca_iNat$data[[2]],
+                                 bv_raster = lca_iNat$env_data[[2]])
+lca_iNat_only_blocked <- run_block_cv(prepped_data = lca_iNat_only$data[[2]],
+                                      bv_raster = lca_iNat_only$env_data[[2]])
+saveRDS(lca_iNat_blocked, "data/lca_iNat_blocked.rds")
+saveRDS(lca_iNat_only_blocked, 'data/lca_iNat_only_blocked.rds')
+
 # Preparing data 2 ----------------------------------------------------------
 #' More data preparation prior to SDM building
 #'
@@ -395,7 +431,7 @@ saveRDS(Gpa_iNat_only_blocked, "data/Gpa_iNat_only_blocked.rds")
 #' for all of the occurence and background data
 #'
 #' @examples
-prep_data_2 = function(data, env_raster){
+prep_data = function(data, env_raster){
   extra_prepped = raster::extract(env_raster, data, df = TRUE) %>%
     bind_cols(as.data.frame(data)) %>%
     drop_na() %>%
@@ -405,12 +441,15 @@ prep_data_2 = function(data, env_raster){
 }
 
 #' Run prep_data2 function with iNat data --------------------------------
-
+  # G patrobas
 G_patrobas_iNat2 <- prep_data_2(G_patrobas_iNat$data[[2]], G_patrobas_iNat$env_data[[2]])
 write.csv(G_patrobas_iNat2, "data/G_patrobas_iNat2.csv")
 
 Gpa_iNat_only2 <- prep_data_2(Gpa_iNat_only$data[[2]], Gpa_iNat_only$env_data[[2]])
 
+  # L carinenta
+lca_iNat2 <- prep_data(lca_iNat$data[[2]], lca_iNat$env_data[[2]])
+lca_iNat_only2 <- prep_data(lca_iNat_only$data[[2]], lca_iNat_only$env_data[[2]])
 
 # Train and test split ---------------------------------------
 
@@ -440,11 +479,17 @@ train_test_split = function(extra_prepped_data, blocked_obj){
 }
 
 #' Run train_test_split function with iNat data -----------------------
+
+  # G patrobas
 G_patrobas_iNat2_split <- train_test_split(G_patrobas_iNat2, G_patrobas_iNat_blocked)
 
 saveRDS(G_patrobas_iNat2_split, "data/G_patrobas_iNat2_split.rds")
 
 Gpa_iNat_only2_split <- train_test_split(Gpa_iNat_only2, Gpa_iNat_only_blocked)
+
+  # L carinenta
+lca_iNat2_split <- train_test_split(lca_iNat2, lca_iNat_blocked)
+lca_iNat_only2_split <- train_test_split(lca_iNat_only2, lca_iNat_only_blocked)
 
 # Modeling ----------------------------------------------------------------
 
@@ -471,22 +516,32 @@ model_func = function(data = NULL, env_raster, num_cores) {
   return(eval)
 }
 
-h# Run model_func function with iNat data -----------------------
+# Run model_func function with iNat data -----------------------
+  # G patrobas
 G_patrobas_iNat_model <- 
   model_func(G_patrobas_iNat2_split$training_data, G_patrobas_iNat$env_data[[2]], 6)
 
   # save model as .rds
 saveRDS(G_patrobas_iNat_model, file = "data/G_patrobas_inat_model.rds")
-
+  
+  # G patrobas
 G_patrobas_iNat_model <- readRDS("data/G_patrobas_inat_model.rds")
 
 Gpa_iNat_only_model <- model_func(Gpa_iNat_only2_split$training_data,
                                   Gpa_iNat_only$env_data[[2]], 6)
 saveRDS(Gpa_iNat_only_model, file = "data/Gpa_iNat_only_model.rds")
 
+  # L carinenta maxnet
+lca_iNat_model <- model_func(lca_iNat2_split$training_data,
+                             lca_iNat$env_data[[2]], 6)
+saveRDS(lca_iNat_model, 'data/lca_iNat_model.rds')
+lca_iNat_only_model <- model_func(lca_iNat_only2_split$training_data,
+                                  lca_iNat_only$env_data[[2]], 6)
+saveRDS(lca_iNat_only_model, 'data/lca_iNat_only_model.rds')
+
 # model_func troubleshooting ----
 
-# inf_check functions
+# inf_check functions ----
 
 inf_check <- function(list){
   for (i in list){
@@ -536,13 +591,15 @@ eval_plots = function(eval_object = NULL) {
   
 }
 
-# Run eval_plots with G_patrobas
+# Run eval_plots ----
+  # G_patrobas
 G_patrobas_iNat_eval <- eval_plots(G_patrobas_iNat_model)
 
 Gpa_iNat_only_eval <- eval_plots(Gpa_iNat_only_model)
 
-
-
+  # L carinenta
+lca_iNat_eval <- eval_plots(lca_iNat_model)
+lca_iNat_only_eval <- eval_plots(lca_iNat_only_model)
 
 
 # Model Selection ---------------------------------------------------------
@@ -554,13 +611,18 @@ best_mod = function(model_obj){
   return(list(best_mod, best_index))
 }
 
-# Run best_mod() on G_patrobas
+# Run best_mod() ----
+
+  # G_patrobas 
 
 G_patrobas_iNat_best <- best_mod(G_patrobas_iNat_model)
 saveRDS(G_patrobas_iNat_best, "data/G_patrobas_iNat_best.rds")
 
 Gpa_iNat_only_best <- best_mod(Gpa_iNat_only_model)
 
+  # L carinenta
+lca_iNat_best <- best_mod(lca_iNat_model)
+lca_iNat_only_best <- best_mod(lca_iNat_only_model)
 
 # Evaluating on test data -------------------------------------------------
 
@@ -579,6 +641,7 @@ evaluate_models = function(test_data, model, env_raster) {
 
 # run evaluate_models ----
 
+  # G patrobas
 G_patrobas_iNat_eval <- evaluate_models(test_data = G_patrobas_iNat2_split$test_data, 
                                         model = G_patrobas_iNat_model@models[[14]], 
                                         env_raster = G_patrobas_iNat$env_data[[2]]) 
@@ -588,6 +651,14 @@ saveRDS(G_patrobas_iNat_eval, "data/G_patrobas_iNat_eval.rds")
 Gpa_iNat_only_eval2 <- evaluate_models(test_data = Gpa_iNat_only2_split$test_data,
                                        model = Gpa_iNat_only_model@models[[12]],
                                        env_raster = Gpa_iNat_only$env_data[[2]])
+
+  # L carinenta
+lca_iNat_evalmod <- evaluate_models(test_data = lca_iNat2_split$test_data,
+                                    model = lca_iNat_model@models[[lca_iNat_best[[2]]]],
+                                    env_raster = lca_iNat$env_data[[2]])
+lca_iNat_only_evalmod <- evaluate_models(test_data = lca_iNat_only2_split$test_data,
+                                    model = lca_iNat_only_model@models[[lca_iNat_only_best[[2]]]],
+                                    env_raster = lca_iNat_only$env_data[[2]])
 
 # Building full models on all data (maxent)----------------------------------------
 
@@ -624,18 +695,36 @@ full_model_maxnet = function(models_obj, best_model_index, full_data = NULL, env
 
 
 # run full_mod iNat -----------
-
+  # G patrobas
+  # iNat + AS maxent
 G_patrobas_iNat_full <- full_model(models_obj = G_patrobas_iNat_model, 
                                    best_model_index = G_patrobas_iNat_best[[2]], 
                                    full_data = G_patrobas_iNat_model@occ.pts, 
                                    env_raster = G_patrobas_iNat$env_data[[2]]) #index t2
 saveRDS(G_patrobas_iNat_full, "data/G_patrobas_iNat_full.rds")
-
+  # iNat + AS maxnet
+G_patrobas_iNat_full <- full_model_maxnet(models_obj = G_patrobas_iNat_model,
+                                        best_model_index = G_patrobas_iNat_best[[2]],
+                                        full_data = G_patrobas_iNat2,
+                                        env_raster = G_patrobas_iNat2)
+  # iNat only maxnet
 Gpa_iNat_only_full <- full_model_maxnet(models_obj = Gpa_iNat_only_model,
                                  best_model_index = Gpa_iNat_only_best[[2]],
                                  full_data = Gpa_iNat_only2,
                                  env_raster = Gpa_iNat_only2)
 saveRDS(Gpa_iNat_only_full, "data/Gpa_iNat_only_full.rds")
+
+  # L carinenta
+lca_iNat_full <- full_model_maxnet(models_obj = lca_iNat_model,
+                                   best_model_index = lca_iNat_best[[2]],
+                                   full_data = lca_iNat2,
+                                   env_raster = lca_iNat2)
+lca_iNat_only_full <- full_model_maxnet(models_obj = lca_iNat_only_model,
+                                        best_model_index = lca_iNat_only_best[[2]],
+                                        full_data = lca_iNat_only2,
+                                        env_raster = lca_iNat_only2)
+saveRDS(lca_iNat_full, 'data/lca_iNat_full.rds')
+saveRDS(lca_iNat_only_full, 'data/lca_iNat_only_full.rds')
 
 # troubleshooting full_mod ----
 
@@ -717,25 +806,52 @@ pred_Gpa_iNat_only <- dismo::predict(object = Gpa_iNat_only_full,
                               ext = Gpa_iNat_only$env_data[[2]]@extent,
                               args = 'outputformat=cloglog')
             # DOES NOT WORK WITH MAXNET OUTPUT (?)
-
+  # G patrobas
+  # iNat + AS maxnet
+pred_Gpa_iNat <- maxnet.predictRaster(mod = G_patrobas_iNat_full,
+                                           env = G_patrobas_iNat$env_data[[2]],
+                                           type = "cloglog",
+                                           clamp = TRUE)
+  # iNat only maxnet
 pred_Gpa_iNat_only <- maxnet.predictRaster(mod = Gpa_iNat_only_full,
                                            env = Gpa_iNat_only$env_data[[2]],
                                            type = "cloglog",
                                            clamp = TRUE)
-
+  # L carinenta
+pred_lca_iNat <- maxnet.predictRaster(mod = lca_iNat_full,
+                                      env = lca_iNat$env_data[[2]],
+                                      type = "cloglog",
+                                      clamp = TRUE)
+pred_lca_iNat_only <- maxnet.predictRaster(mod = lca_iNat_only_full,
+                                           env = lca_iNat_only$env_data[[2]],
+                                           type = "cloglog",
+                                           clamp = TRUE)
 
 
 # make a spatial pixels dataframe from predictions
+  # G patrobas
+  # iNat + AS
 pred_Gpa_iNat <- as(pred_Gpa_iNat, 
                     "SpatialPixelsDataFrame")
 pred_Gpa_iNat <- as.data.frame(pred_Gpa_iNat) %>%
   rename("value" = "layer")
 
+  # iNat only
 pred_Gpa_iNat_only2 <- as(pred_Gpa_iNat_only, 
                     "SpatialPixelsDataFrame")
 pred_Gpa_iNat_only2 <- as.data.frame(pred_Gpa_iNat_only2) %>%
   rename("value" = "layer")
 
+  # L carinenta
+pred_lca_iNat <- as(pred_lca_iNat,
+                    "SpatialPixelsDataFrame") %>%
+  as.data.frame() %>%
+  rename("value" = "layer")
+
+pred_lca_iNat_only <- as(pred_lca_iNat_only,
+                    "SpatialPixelsDataFrame") %>%
+  as.data.frame() %>%
+  rename("value" = "layer")
 
 # use geom_tile to plot predictions
 
@@ -761,11 +877,49 @@ map_Gpa_iNat_only <- get_map(c(left = -113, right = -107, bottom = 28, top = 36)
   guides(alpha = FALSE)
 map_Gpa_iNat_only
 ggsave('maps/map_Gpa_iNat_only.png', map_Gpa_iNat_only)
-  
 
-ggplot() +
-  geom_tile(data = pred_Gpa_iNat_only2, 
-            aes(x, y, fill=value, alpha = value*1.5)) +
+# G patrobas
+# iNat+AS
+Gpa_add_AS <- ggplot() +
+  geom_tile(data = pred_Gpa_iNat, 
+            aes(x, y, fill=value)) +
   scale_fill_viridis_c(name = "Probability of Occurence") +
-  guides(alpha = FALSE)
+  guides(alpha = FALSE) +
+  ggtitle("iNat + Adventure Scientists")
   
+  
+# iNat only
+Gpa <- ggplot() +
+  geom_tile(data = pred_Gpa_iNat_only2, 
+            aes(x, y, fill=value)) +
+  scale_fill_viridis_c(name = "Probability of Occurence") +
+  guides(alpha = FALSE) +
+  ggtitle("iNat Only")
+
+# both
+Gpa_comp <- ggarrange(Gpa, Gpa_add_AS, common.legend = TRUE)
+ggsave('maps/Gpa_comp.png', Gpa_comp)
+
+
+#L carinenta
+# iNat+AS
+lca_add_as <- ggplot() +
+  geom_tile(data = pred_lca_iNat, 
+            aes(x, y, fill=value)) +
+  scale_fill_viridis_c(name = "Probability of Occurence") +
+  guides(alpha = FALSE) +
+  ggtitle("iNat + Adventure Scientists")
+
+
+# iNat only
+lca <- ggplot() +
+  geom_tile(data = pred_lca_iNat_only, 
+            aes(x, y, fill=value)) +
+  scale_fill_viridis_c(name = "Probability of Occurence") +
+  guides(alpha = FALSE) +
+  ggtitle("iNat Only")
+
+# both
+lca_comp <- ggarrange(lca, lca_add_as, common.legend = TRUE)
+ggsave('maps/lca_comp.png', lca_comp)
+
