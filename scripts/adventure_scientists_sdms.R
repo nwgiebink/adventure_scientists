@@ -171,6 +171,7 @@ if (Sys.getenv("JAVA_HOME")!="")
   Sys.setenv(JAVA_HOME="")
 library(rJava)
 library(ggmap)
+library(ggpubr)
 
 # Importing big bioclim data ----------------------------------------------
 #' @examples
@@ -309,11 +310,38 @@ lca_iNat_only <- prep_data(data = prepped_iNat_only$Libytheana_carinenta_iNat_on
 saveRDS(lca_iNat, 'data/lca_iNat.rds')
 saveRDS(lca_iNat_only, 'data/lca_iNat_only.rds')
 
+# cec = Celestrina echo
+cec_iNat <- prep_data(data = prepped_iNat$Celastrina_echo_iNat,
+                      year_split = 2000,
+                      env_raster_t1 = bv_as_t1, 
+                      env_raster_t2 = bv_as_t2)
+
+cec_iNat_only <- prep_data(data = prepped_iNat_only$Celastrina_echo_iNat_only,
+                           year_split = 2000,
+                           env_raster_t1 = bv_as_t1, 
+                           env_raster_t2 = bv_as_t2)
+saveRDS(cec_iNat, 'data/cec_iNat.rds')
+saveRDS(cec_iNat_only, 'data/cec_iNat_only.rds')
+
+# eme = Eurema mexicana
+eme_iNat <- prep_data(data = prepped_iNat$Eurema_mexicana_iNat,
+                      year_split = 2000,
+                      env_raster_t1 = bv_as_t1, 
+                      env_raster_t2 = bv_as_t2)
+
+eme_iNat_only <- prep_data(data = prepped_iNat_only$Eurema_mexicana_iNat_only,
+                           year_split = 2000,
+                           env_raster_t1 = bv_as_t1, 
+                           env_raster_t2 = bv_as_t2)
+saveRDS(eme_iNat, 'data/eme_iNat.rds')
+saveRDS(eme_iNat_only, 'data/eme_iNat_only.rds')
+
+
 # CHECKPOINT
 # get a map of the data to see range size 
 # and determine optimal block size for Block CV function
 
-# Map G_patrobas
+# Map G_patrobas ----
   # all iNaturalist data
 map_G_patrobas_iNat <- get_map(c(left = -125, right = -100, bottom = 28, top = 49)) %>%
   ggmap() +
@@ -419,6 +447,26 @@ lca_iNat_only_blocked <- run_block_cv(prepped_data = lca_iNat_only$data[[2]],
 saveRDS(lca_iNat_blocked, "data/lca_iNat_blocked.rds")
 saveRDS(lca_iNat_only_blocked, 'data/lca_iNat_only_blocked.rds')
 
+# Celastrina echo
+cec_iNat_blocked <- run_block_cv(prepped_data = cec_iNat$data[[2]],
+                                 bv_raster = cec_iNat$env_data[[2]])
+cec_iNat_only_blocked <- run_block_cv(prepped_data = cec_iNat_only$data[[2]],
+                                      bv_raster = cec_iNat_only$env_data[[2]])
+saveRDS(cec_iNat_blocked, "data/cec_iNat_blocked.rds")
+saveRDS(cec_iNat_only_blocked, 'data/cec_iNat_only_blocked.rds')
+
+# Eurema mexicana
+eme_iNat_blocked <- run_block_cv(prepped_data = eme_iNat$data[[2]],
+                                 bv_raster = eme_iNat$env_data[[2]])
+eme_iNat_only_blocked <- run_block_cv(prepped_data = eme_iNat_only$data[[2]],
+                                      bv_raster = eme_iNat_only$env_data[[2]])
+saveRDS(eme_iNat_blocked, "data/eme_iNat_blocked.rds")
+saveRDS(eme_iNat_only_blocked, 'data/eme_iNat_only_blocked.rds')
+
+
+
+
+
 # Preparing data 2 ----------------------------------------------------------
 #' More data preparation prior to SDM building
 #'
@@ -431,7 +479,7 @@ saveRDS(lca_iNat_only_blocked, 'data/lca_iNat_only_blocked.rds')
 #' for all of the occurence and background data
 #'
 #' @examples
-prep_data = function(data, env_raster){
+prep_data_2 = function(data, env_raster){
   extra_prepped = raster::extract(env_raster, data, df = TRUE) %>%
     bind_cols(as.data.frame(data)) %>%
     drop_na() %>%
@@ -448,8 +496,16 @@ write.csv(G_patrobas_iNat2, "data/G_patrobas_iNat2.csv")
 Gpa_iNat_only2 <- prep_data_2(Gpa_iNat_only$data[[2]], Gpa_iNat_only$env_data[[2]])
 
   # L carinenta
-lca_iNat2 <- prep_data(lca_iNat$data[[2]], lca_iNat$env_data[[2]])
-lca_iNat_only2 <- prep_data(lca_iNat_only$data[[2]], lca_iNat_only$env_data[[2]])
+lca_iNat2 <- prep_data_2(lca_iNat$data[[2]], lca_iNat$env_data[[2]])
+lca_iNat_only2 <- prep_data_2(lca_iNat_only$data[[2]], lca_iNat_only$env_data[[2]])
+    
+  # C echo
+cec_iNat2 <- prep_data_2(cec_iNat$data[[2]], cec_iNat$env_data[[2]])
+cec_iNat_only2 <- prep_data_2(cec_iNat_only$data[[2]], cec_iNat_only$env_data[[2]])
+
+  # E mexicana 
+eme_iNat2 <- prep_data2(eme_iNat$data[[2]], eme_iNat$env_data[[2]])
+eme_iNat_only2 <- prep_data2(eme_iNat_only$data[[2]], eme_iNat_only$env_data[[2]])
 
 # Train and test split ---------------------------------------
 
@@ -490,6 +546,14 @@ Gpa_iNat_only2_split <- train_test_split(Gpa_iNat_only2, Gpa_iNat_only_blocked)
   # L carinenta
 lca_iNat2_split <- train_test_split(lca_iNat2, lca_iNat_blocked)
 lca_iNat_only2_split <- train_test_split(lca_iNat_only2, lca_iNat_only_blocked)
+
+  # C echo
+cec_iNat2_split <- train_test_split(cec_iNat2, cec_iNat_blocked)
+cec_iNat_only2_split <- train_test_split(cec_iNat_only2, cec_iNat_only_blocked)
+
+  # E mexicana
+eme_iNat2_split <- train_test_split(eme_iNat2, eme_iNat_blocked)
+eme_iNat_only2_split <- train_test_split(eme_iNat_only2, eme_iNat_only_blocked)
 
 # Modeling ----------------------------------------------------------------
 
@@ -538,6 +602,24 @@ saveRDS(lca_iNat_model, 'data/lca_iNat_model.rds')
 lca_iNat_only_model <- model_func(lca_iNat_only2_split$training_data,
                                   lca_iNat_only$env_data[[2]], 6)
 saveRDS(lca_iNat_only_model, 'data/lca_iNat_only_model.rds')
+
+# E mexicana maxnet (run before C echo--smaller first)
+eme_iNat_model <- model_func(eme_iNat2_split$training_data,
+                             eme_iNat$env_data[[2]], 6)
+saveRDS(eme_iNat_model, 'data/eme_iNat_model.rds')
+eme_iNat_only_model <- model_func(eme_iNat_only2_split$training_data,
+                                  eme_iNat_only$env_data[[2]], 6)
+saveRDS(eme_iNat_only_model, 'data/eme_iNat_only_model.rds')
+
+  # C echo maxnet
+cec_iNat_model <- model_func(cec_iNat2_split$training_data,
+                             cec_iNat$env_data[[2]], 6)
+saveRDS(cec_iNat_model, 'data/cec_iNat_model.rds')
+cec_iNat_only_model <- model_func(cec_iNat_only2_split$training_data,
+                                  cec_iNat_only$env_data[[2]], 6)
+saveRDS(cec_iNat_only_model, 'data/cec_iNat_only_model.rds')
+    #Error in { : task 3 failed - "index larger than maximal 194"
+
 
 # model_func troubleshooting ----
 
@@ -601,6 +683,10 @@ Gpa_iNat_only_eval <- eval_plots(Gpa_iNat_only_model)
 lca_iNat_eval <- eval_plots(lca_iNat_model)
 lca_iNat_only_eval <- eval_plots(lca_iNat_only_model)
 
+  # E mexicana
+eme_iNat_eval <- eval_plots(eme_iNat_model)
+eme_iNat_only_eval <- eval_plots(eme_iNat_only_model)
+
 
 # Model Selection ---------------------------------------------------------
 
@@ -623,6 +709,10 @@ Gpa_iNat_only_best <- best_mod(Gpa_iNat_only_model)
   # L carinenta
 lca_iNat_best <- best_mod(lca_iNat_model)
 lca_iNat_only_best <- best_mod(lca_iNat_only_model)
+
+  # E mexicana
+eme_iNat_best <- best_mod(eme_iNat_model)
+eme_iNat_only_best <- best_mod(eme_iNat_only_model)
 
 # Evaluating on test data -------------------------------------------------
 
@@ -659,6 +749,14 @@ lca_iNat_evalmod <- evaluate_models(test_data = lca_iNat2_split$test_data,
 lca_iNat_only_evalmod <- evaluate_models(test_data = lca_iNat_only2_split$test_data,
                                     model = lca_iNat_only_model@models[[lca_iNat_only_best[[2]]]],
                                     env_raster = lca_iNat_only$env_data[[2]])
+
+  # E mexicana
+eme_iNat_evalmod <- evaluate_models(test_data = eme_iNat2_split$test_data,
+                                    model = eme_iNat_model@models[[eme_iNat_best[[2]]]],
+                                    env_raster = eme_iNat$env_data[[2]])
+eme_iNat_only_evalmod <- evaluate_models(test_data = eme_iNat_only2_split$test_data,
+                                         model = eme_iNat_only_model@models[[eme_iNat_only_best[[2]]]],
+                                         env_raster = eme_iNat_only$env_data[[2]])
 
 # Building full models on all data (maxent)----------------------------------------
 
@@ -725,6 +823,18 @@ lca_iNat_only_full <- full_model_maxnet(models_obj = lca_iNat_only_model,
                                         env_raster = lca_iNat_only2)
 saveRDS(lca_iNat_full, 'data/lca_iNat_full.rds')
 saveRDS(lca_iNat_only_full, 'data/lca_iNat_only_full.rds')
+
+  # E mexicana
+eme_iNat_full <- full_model_maxnet(models_obj = eme_iNat_model,
+                                   best_model_index = eme_iNat_best[[2]],
+                                   full_data = eme_iNat2,
+                                   env_raster = eme_iNat2)
+eme_iNat_only_full <- full_model_maxnet(models_obj = eme_iNat_only_model,
+                                        best_model_index = eme_iNat_only_best[[2]],
+                                        full_data = eme_iNat_only2,
+                                        env_raster = eme_iNat_only2)
+saveRDS(eme_iNat_full, 'data/eme_iNat_full.rds')
+saveRDS(eme_iNat_only_full, 'data/eme_iNat_only_full.rds')
 
 # troubleshooting full_mod ----
 
@@ -827,6 +937,16 @@ pred_lca_iNat_only <- maxnet.predictRaster(mod = lca_iNat_only_full,
                                            type = "cloglog",
                                            clamp = TRUE)
 
+  # E mexicana
+pred_eme_iNat <- maxnet.predictRaster(mod = eme_iNat_full,
+                                      env = eme_iNat$env_data[[2]],
+                                      type = "cloglog",
+                                      clamp = TRUE)
+pred_eme_iNat_only <- maxnet.predictRaster(mod = eme_iNat_only_full,
+                                           env = eme_iNat_only$env_data[[2]],
+                                           type = "cloglog",
+                                           clamp = TRUE)
+
 
 # make a spatial pixels dataframe from predictions
   # G patrobas
@@ -850,6 +970,17 @@ pred_lca_iNat <- as(pred_lca_iNat,
 
 pred_lca_iNat_only <- as(pred_lca_iNat_only,
                     "SpatialPixelsDataFrame") %>%
+  as.data.frame() %>%
+  rename("value" = "layer")
+
+  # E mexicana
+pred_eme_iNat <- as(pred_eme_iNat,
+                    "SpatialPixelsDataFrame") %>%
+  as.data.frame() %>%
+  rename("value" = "layer")
+
+pred_eme_iNat_only <- as(pred_eme_iNat_only,
+                         "SpatialPixelsDataFrame") %>%
   as.data.frame() %>%
   rename("value" = "layer")
 
@@ -923,3 +1054,25 @@ lca <- ggplot() +
 lca_comp <- ggarrange(lca, lca_add_as, common.legend = TRUE)
 ggsave('maps/lca_comp.png', lca_comp)
 
+# E mexicana
+# iNat+AS
+eme_add_as <- ggplot() +
+  geom_tile(data = pred_eme_iNat, 
+            aes(x, y, fill=value)) +
+  scale_fill_viridis_c(name = "Probability of Occurence") +
+  guides(alpha = FALSE) +
+  ggtitle("iNat + Adventure Scientists")
+
+
+# iNat only
+eme <- ggplot() +
+  geom_tile(data = pred_eme_iNat_only, 
+            aes(x, y, fill=value)) +
+  scale_fill_viridis_c(name = "Probability of Occurence") +
+  guides(alpha = FALSE) +
+  ggtitle("iNat Only")
+
+# both
+eme_comp <- ggarrange(eme, eme_add_as, common.legend = TRUE)
+eme_comp
+  
