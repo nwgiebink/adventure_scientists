@@ -504,8 +504,8 @@ cec_iNat2 <- prep_data_2(cec_iNat$data[[2]], cec_iNat$env_data[[2]])
 cec_iNat_only2 <- prep_data_2(cec_iNat_only$data[[2]], cec_iNat_only$env_data[[2]])
 
   # E mexicana 
-eme_iNat2 <- prep_data2(eme_iNat$data[[2]], eme_iNat$env_data[[2]])
-eme_iNat_only2 <- prep_data2(eme_iNat_only$data[[2]], eme_iNat_only$env_data[[2]])
+eme_iNat2 <- prep_data_2(eme_iNat$data[[2]], eme_iNat$env_data[[2]])
+eme_iNat_only2 <- prep_data_2(eme_iNat_only$data[[2]], eme_iNat_only$env_data[[2]])
 
 # Train and test split ---------------------------------------
 
@@ -793,18 +793,24 @@ full_model_maxnet = function(models_obj, best_model_index, full_data = NULL, env
 
 
 # run full_mod iNat -----------
+  
+  # NOTE: change full_data to pre- train-test split if running again
   # G patrobas
   # iNat + AS maxent
+  # *ONLY OCC PTS FROM TRAINING DATA WERE USED...OOPS!
 G_patrobas_iNat_full <- full_model(models_obj = G_patrobas_iNat_model, 
                                    best_model_index = G_patrobas_iNat_best[[2]], 
-                                   full_data = G_patrobas_iNat_model@occ.pts, 
+                                   full_data = G_patrobas_iNat_model@occ.pts, # CHANGE
                                    env_raster = G_patrobas_iNat$env_data[[2]]) #index t2
-saveRDS(G_patrobas_iNat_full, "data/G_patrobas_iNat_full.rds")
+
   # iNat + AS maxnet
+  # *ONLY OCC PTS FROM TRAINING DATA WERE USED...OOPS!
 G_patrobas_iNat_full <- full_model_maxnet(models_obj = G_patrobas_iNat_model,
                                         best_model_index = G_patrobas_iNat_best[[2]],
                                         full_data = G_patrobas_iNat2,
                                         env_raster = G_patrobas_iNat2)
+saveRDS(G_patrobas_iNat_full, "data/G_patrobas_iNat_full.rds")
+  # NOTE: ALL OCC PTS USED CORRECTLY FOR MAXNET MODELS
   # iNat only maxnet
 Gpa_iNat_only_full <- full_model_maxnet(models_obj = Gpa_iNat_only_model,
                                  best_model_index = Gpa_iNat_only_best[[2]],

@@ -315,9 +315,9 @@ speciesHeatmap_west_iNat_only <- ggplot(top_5_iNat,
                                    hjust = 1)) +
   ggtitle("iNat only")
 
-both_west <- ggarrange(speciesHeatmap_west, speciesHeatmap_west_iNat_only, common.legend = TRUE)
-
-
+both_west <- ggarrange(speciesHeatmap_west_iNat_only, speciesHeatmap_west, common.legend = TRUE)
+both_west
+    
 
 
 
