@@ -16,7 +16,7 @@ library(mapr)
 west_as <- read.csv("data/west_as.csv")
 west_iNat <- read.csv("data/west_iNat.csv")
 
-
+# Prep data ----
 # Remove adventure scientist observations from west_iNat
 west_iNat_only <- filter(west_iNat, !(west_iNat$id %in% west_as$id))
 
@@ -35,17 +35,17 @@ top_5_west = west_as %>%
   arrange((place_state_name), desc(num_records))
 
 #iNaturalist only--not including AS data
-top_5_iNat_west <-  west_iNat_only %>%
-  filter(place_state_name != "") %>%
-  filter(place_state_name %in% c("Washington", "Utah", 
-                                 "Montana", "California", 
-                                 "Arizona")) %>%
-  group_by(place_state_name, scientific_name) %>%
-  summarize(num_records = n()) %>%
-  ungroup() %>%
-  group_by(place_state_name) %>%
-  top_n(n = 5, wt = num_records) %>%
-  arrange((place_state_name), desc(num_records))  
+#top_5_iNat_west <-  west_iNat_only %>%
+#  filter(place_state_name != "") %>%
+#  filter(place_state_name %in% c("Washington", "Utah", 
+#                                 "Montana", "California", 
+#                                 "Arizona")) %>%
+#  group_by(place_state_name, scientific_name) %>%
+#  summarize(num_records = n()) %>%
+#  ungroup() %>%
+#  group_by(place_state_name) %>%
+#  top_n(n = 5, wt = num_records) %>%
+#  arrange((place_state_name), desc(num_records))  
 
 
 #All species with at least 20 observations in iNat alone, by state
@@ -58,7 +58,10 @@ iNat_coverage_west <- west_iNat_only %>%
   filter(num_records > 19) %>%
   arrange((place_state_name), desc(num_records))
 
-#What do iNat and AS have in common?
+# Choose candidates ----
+# top species by state with acceptable as & iNat coverage 
+# df all_cand: data frame of dated lat/long observations by provider (as or iNat)
+# top 5 AS in each state and any with more than 20 obs. in iNat only
 shared_coverage_west <- top_5_west %>%
   ungroup() %>%
   mutate(place_state_name = as.character(place_state_name), 
@@ -75,8 +78,29 @@ shared_coverage_west <- top_5_west %>%
          "iNat_Records" = num_records_iNat_data,
          "AS_Records" = num_records_as_data)
 
-#Visualize candidate species in each region
-#heatmap: state~species 
+# get distribution summary of proportion AS to iNat observations
+# for each shared_coverage_west observation
+prop <- shared_coverage_west$AS_Records/shared_coverage_west$iNat_Records
+summary(prop)
+
+# remove observations where proportion of AS/iNat obs are below 1st quartile
+cand <- filter(shared_coverage_west, AS_Records/iNat_Records > summary(prop)[[2]])
+
+# get list of candidate species
+cand_list <- unique(cand$Species)
+
+# include only observations that are in cand_list
+
+iNat_cand <- filter(west_iNat_only, scientific_name %in% cand_list) %>%
+  dplyr::select(scientific_name, latitude, longitude, observed_on) %>%
+  mutate(provider = 'iNat')
+as_cand <- filter(west_as, scientific_name %in% cand_list) %>%
+  dplyr::select(scientific_name, latitude, longitude, observed_on) %>%
+  mutate(provider = 'as')
+all_cand <- rbind(iNat_cand, as_cand)
+
+# Visualize candidate species in each region ----
+# heatmap: state~species 
 
 speciesHeatmap_west <- ggplot(top_5_west,
                               aes(x = scientific_name,
