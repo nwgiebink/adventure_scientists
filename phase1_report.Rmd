@@ -137,6 +137,7 @@ Table 1. Candidate species and localities for initial SDM comparisons.
 ```{r}
 
 #What do iNat and AS have in common?
+# top 5 AS in each state and top 5 iNat in each state (too conservative)
 top_shared <- top_5 %>%
   ungroup() %>%
   mutate(place_state_name = as.character(place_state_name), 
@@ -153,6 +154,7 @@ top_shared <- top_5 %>%
          "iNat_Records" = num_records_iNat_data,
          "AS_Records" = num_records_as_data)
 
+# top 5 AS in each state and any with more than 20 obs. in iNat only (less conservative)
 shared_coverage <- top_5 %>%
   ungroup() %>%
   mutate(place_state_name = as.character(place_state_name), 
