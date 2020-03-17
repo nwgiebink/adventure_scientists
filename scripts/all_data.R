@@ -98,6 +98,7 @@ as_cand <- filter(west_as, scientific_name %in% cand_list) %>%
   dplyr::select(scientific_name, latitude, longitude, observed_on) %>%
   mutate(provider = 'as')
 all_cand <- rbind(iNat_cand, as_cand)
+write_csv(all_cand, 'data/species_obs.csv')
 
 # Visualize candidate species in each region ----
 # heatmap: state~species 
