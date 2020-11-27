@@ -19,7 +19,9 @@ We compare performance of models trained on different data sources:
 Key packages and methods:
 
 [BlockCV](https://github.com/rvalavi/blockCV) Spatially explicit k-fold cross validation
+
 [ENMevaluate](https://www.rdocumentation.org/packages/ENMeval/versions/0.3.1/topics/ENMevaluate%20) Hyperparameter tuning
+
 [Maxnet](https://www.rdocumentation.org/packages/maxnet/versions/0.1.2) Open source alternative to "Maxent"
 
 
